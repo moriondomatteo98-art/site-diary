@@ -188,6 +188,44 @@ body.auth #bar,body.auth #app{display:none}
 .acct{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:12px;font-size:13px;color:var(--muted)}
 .acct span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .photo img:not([src]){background:var(--line)}
+/* Completed-day preview: always looks like the printed page (white paper), also in dark mode */
+.rp{background:#fff;color:#1d1f22;border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:16px 14px;display:flex;flex-direction:column;gap:14px;font-size:14px}
+.rp-hd{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.rp-hd img:first-child{height:28px;width:auto}.rp-hd img:last-child{height:20px;width:auto}
+.rp-rule{height:3px;background:linear-gradient(90deg,#ff3131 30%,#1d1f22 30%);margin-top:-4px}
+.rp-ti{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.rp-ti h2{font:700 22px var(--display);color:#1d1f22}.rp-ti h2::after{content:".";color:#ff3131}
+.rp-sub{color:#787878;font-size:13px}
+.rp-pill{flex:none;border:1.5px solid #1e9e57;color:#1e9e57;border-radius:99px;padding:2px 10px;font:700 11px var(--body);letter-spacing:.04em;margin-top:4px}
+.rp-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #e1e1e1;border-radius:8px;overflow:hidden}
+.rp-c{padding:7px 10px;border-right:1px solid #e1e1e1;border-bottom:1px solid #e1e1e1;display:flex;flex-direction:column;min-width:0}
+.rp-c:nth-child(2n){border-right:0}.rp-c.w{grid-column:1/-1;border-right:0}
+.rp-c span{font:700 10px var(--body);letter-spacing:.06em;text-transform:uppercase;color:#777}
+.rp-c b{font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.rp-sec{display:flex;flex-direction:column;gap:6px;min-width:0}
+.rp-sec h3{font:700 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:#1d1f22;display:flex;align-items:center;gap:6px}
+.rp-sec h3::before{content:"";width:3px;height:12px;border-radius:2px;background:#ff3131;flex:none}
+.rp-sec h3::after{content:"";flex:1;height:1px;background:#e4e4e4}
+.rp-box{background:#fafafa;border-left:3px solid #ddd;padding:8px 10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.rp-e{color:#969696}
+.rp-two{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:520px){.rp-two{grid-template-columns:1fr 1fr}}
+.rp-chips{display:flex;flex-wrap:wrap;gap:6px}
+.rp-chip{background:#f4f4f4;border-radius:5px;padding:3px 9px;font-size:13px}.rp-chip.dk{background:#1d1f22;color:#fff}
+.rp-risk{border-bottom:1px solid #ebebeb;padding:6px 0}
+.rp-rt{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.rp-lv{flex:none;color:#fff;font:700 10px var(--body);border-radius:4px;padding:2px 7px}
+.rp-lv.high{background:#d9342b}.rp-lv.med{background:#e68c0a}.rp-lv.low{background:#1e9e57}
+.rp-risk ul{margin:4px 0 0;padding-left:18px;font-size:13px}
+.rp-t{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.rp-t th{text-align:left;font:700 9.5px var(--body);letter-spacing:.04em;text-transform:uppercase;color:#777;border-bottom:1.5px solid #1d1f22;padding:3px 4px}
+.rp-t td{border-bottom:1px solid #ebebeb;padding:5px 4px;overflow-wrap:anywhere}
+.rp-t th:first-child,.rp-t td:first-child{width:36%}
+.rp-ph{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rp-ph figure{margin:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+.rp-ph img{width:100%;aspect-ratio:4/3;object-fit:contain;background:#e9edf0;border-radius:4px;cursor:zoom-in}
+.rp-ph figcaption{font-size:12.5px;overflow-wrap:anywhere}.rp-ph figcaption b{color:#ff3131}
+.rp-ft{border-top:1px solid #e4e4e4;padding-top:6px;font-size:11px;color:#888}
 </style>
 </head>
 <body>
@@ -298,7 +336,7 @@ const PROJ_KEYS=["builder","project","address"];
 function applyProj(){Object.values(days).forEach(x=>{if(x&&typeof x==="object")PROJ_KEYS.forEach(k=>{x[k]=DEFAULTS[k]})})}
 function setProj(v){if(v&&typeof v==="object")PROJ_KEYS.forEach(k=>{if(typeof v[k]==="string")DEFAULTS[k]=v[k]})}
 /* Supabase connection. The publishable (anon) key is safe in the browser: Row Level Security only lets the owner's account read or write. */
-const APP_VERSION="v4";
+const APP_VERSION="v5";
 const SB_URL="https://atvukmvzjnyyvblrjorx.supabase.co";
 const SB_KEY="sb_publishable_7qcokDz_vp1NiFugeHNfxQ_ancigAFg";
 const AUTH_KEY="siteDiary.auth";
@@ -515,8 +553,53 @@ function wireLists(root){
 }
 
 /* ---------- views ---------- */
+/* ---------- completed day: read-only preview laid out like the PDF ---------- */
+function previewHTML(d,id){
+  const v=t=>{t=String(t==null?"":t).trim();return t?esc(t):'<span class="rp-e">-</span>'};
+  const sec=(h,body)=>`<div class="rp-sec"><h3>${esc(h)}</h3>${body}</div>`;
+  const box=(h,t)=>sec(h,`<div class="rp-box">${v(t)}</div>`);
+  const cell=(l,val,wide)=>`<div class="rp-c${wide?" w":""}"><span>${esc(l)}</span><b>${v(val)}</b></div>`;
+  const lv=r=>r.level==="high"?"high":r.level==="med"?"med":"low";
+  const cr=craneRanges(d);
+  const chips=CREW.filter(n=>d.crew[n]).map(n=>`<span class="rp-chip">${esc(n)} <b>${d.crew[n]}</b></span>`).join("")+`<span class="rp-chip dk">Total <b>${total(d)}</b></span>`;
+  const risks=d.risks.length?d.risks.map(r=>`<div class="rp-risk"><div class="rp-rt"><b>${esc(r.name)}</b><span class="rp-lv ${lv(r)}">${esc(sevLabel(r.level).toUpperCase())}</span></div>${(r.controls||[]).length?`<ul>${r.controls.map(c=>`<li>${esc(c)}</li>`).join("")}</ul>`:""}</div>`).join(""):'<div class="rp-e">No risks recorded.</div>';
+  const dels=d.deliveries.length?`<table class="rp-t"><thead><tr><th>Type</th><th>Delivery / return</th><th>Arrive</th><th>Depart</th></tr></thead><tbody>${d.deliveries.map(r=>`<tr><td>${esc(r.type||"-")}</td><td>${esc(r.dir||"Delivery")}</td><td>${esc(r.arrive||"--:--")}</td><td>${esc(r.depart||"--:--")}</td></tr>`).join("")}</tbody></table>`:'<div class="rp-e">No deliveries.</div>';
+  const photos=d.photos.length?sec("Photos",`<div class="rp-ph">${d.photos.map((p,i)=>`<figure><img data-pid="${esc(p.id)}" data-pv="${i}" alt="${esc(p.caption||"Site photo")}"><figcaption>${p.time?`<b>${esc(p.time)}</b> `:""}${esc(p.caption||"")}</figcaption></figure>`).join("")}</div>`):"";
+  return `<article class="rp" aria-label="Site diary preview">
+    <div class="rp-hd"><img src="${LOGO}" alt="Transform Group"><img src="${HFULL}" alt="Hindmarsh"></div>
+    <div class="rp-rule"></div>
+    <div class="rp-ti"><div><h2>Daily Site Diary</h2><div class="rp-sub">${esc(nice(id))}</div></div><span class="rp-pill">COMPLETED</span></div>
+    <div class="rp-grid">${cell("Builder",d.builder)}${cell("Project",d.project)}${cell("Address",d.address,true)}${cell("Hours",d.hours)}${cell("Weather",d.weather)}${cell("Total men",total(d))}${cell("Working areas",d.areas)}</div>
+    ${sec("Manpower",`<div class="rp-chips">${chips}</div>`)}
+    ${sec("Risk of the day",risks)}
+    <div class="rp-two">${box("Crane activity",(cr.length?"Hours: "+cr.join(", "):"")+(d.craneNote?(cr.length?"\n":"")+d.craneNote:""))}${box("Concrete pour",d.pour)}</div>
+    ${sec("Deliveries",dels)}
+    ${box("Site activity",d.activity)}
+    <div class="rp-two">${box("Deck and verticals handover",d.handover)}${box("Variations",d.variations)}</div>
+    ${box("Delays",d.delays)}
+    <div class="rp-two">${box("Ongoing delays",d.ongoing)}${box("Accidents / injuries",d.accidents)}</div>
+    ${photos}
+    <div class="rp-ft">Daily Site Diary | ${esc(d.builder)} | ${esc(d.project)} | ${esc(nice(id))}</div>
+  </article>`;
+}
+function renderPreview(d){
+  const bar=$("#bar");if(bar)bar.hidden=true;
+  $("#app").classList.remove("locked");
+  $("#app").innerHTML=`
+  <div class="status"><span class="dot" id="dot"></span><span id="statusTxt"></span><span class="pill low" style="margin-left:auto">Completed</span></div>
+  <div class="card" style="flex-direction:row;align-items:center;justify-content:space-between;gap:12px;border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surface))"><div><strong style="color:var(--ok)">This day is completed</strong><div style="font-size:13px;color:var(--muted)">This is how the diary will print. Reopen the day to make changes.</div></div><button class="btn" id="reopenBtn" type="button" style="flex:none">Reopen day</button></div>
+  ${previewHTML(d,cur)}
+  <button class="btn primary" id="pdfDay" type="button" style="min-height:54px;font-size:17px">Make PDF of this day</button>`;
+  $("#reopenBtn").onclick=()=>{d.completed=false;queueSave();render();scrollTo(0,0);toast("Day reopened")};
+  $("#pdfDay").onclick=()=>{exFrom=cur;exTo="";exFresh=true;exM=cur.slice(0,7);exportSheet()};
+  $("#app").querySelectorAll("[data-pv]").forEach(im=>im.onclick=()=>{const p=d.photos[im.dataset.pv];if(!im.src)return;sheet("",`<img class="pv" src="${esc(im.src)}" alt=""><div>${esc(p.caption)}</div>`,null)});
+  fillPhotos($("#app"));
+  status(...(status.last||["Loading"]));
+}
 function renderDetails(){
   const d=day();
+  if(d.completed)return renderPreview(d);
+  if($("#bar"))$("#bar").hidden=false;
   $("#app").innerHTML=`
   <div class="status"><span class="dot" id="dot"></span><span id="statusTxt"></span>${d.completed?'<span class="pill low" style="margin-left:auto">Completed</span>':hasContent(d)?'<span class="pill med" style="margin-left:auto">In progress</span>':""}</div>
   ${d.completed?`<div class="card" style="flex-direction:row;align-items:center;justify-content:space-between;gap:12px;border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surface))"><div><strong style="color:var(--ok)">This day is completed</strong><div style="font-size:13px;color:var(--muted)">Locked. Reopen the day to make changes.</div></div><button class="btn" id="reopenBtn" type="button" style="flex:none">Reopen day</button></div>`:""}

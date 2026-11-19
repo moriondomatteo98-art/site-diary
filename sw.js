@@ -1,7 +1,7 @@
 /* Keeps the app itself on the phone so it opens with no signal.
    Diary data is NOT cached here: it lives in the app's own storage and in Supabase.
    Bump VERSION whenever index.html or the lib files change. */
-const VERSION = "site-diary-v3";
+const VERSION = "site-diary-v4";
 const SHELL = [
   "./", "./index.html", "./manifest.webmanifest",
   "./lib/supabase.js", "./lib/jspdf.umd.min.js",
@@ -23,7 +23,7 @@ self.addEventListener("fetch", e => {
   const isFont = url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com";
   if (isPage) {
     // Newest page when online, saved copy when not.
-    e.respondWith(fetch(req).then(r => { const c = r.clone(); caches.open(VERSION).then(x => x.put("./index.html", c)); return r; })
+    e.respondWith(fetch(req, { cache: "no-store" }).then(r => { const c = r.clone(); caches.open(VERSION).then(x => x.put("./index.html", c)); return r; })
       .catch(() => caches.match("./index.html")));
     return;
   }

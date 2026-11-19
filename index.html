@@ -336,7 +336,7 @@ const PROJ_KEYS=["builder","project","address"];
 function applyProj(){Object.values(days).forEach(x=>{if(x&&typeof x==="object")PROJ_KEYS.forEach(k=>{x[k]=DEFAULTS[k]})})}
 function setProj(v){if(v&&typeof v==="object")PROJ_KEYS.forEach(k=>{if(typeof v[k]==="string")DEFAULTS[k]=v[k]})}
 /* Supabase connection. The publishable (anon) key is safe in the browser: Row Level Security only lets the owner's account read or write. */
-const APP_VERSION="v6";
+const APP_VERSION="v7";
 const SB_URL="https://atvukmvzjnyyvblrjorx.supabase.co";
 const SB_KEY="sb_publishable_7qcokDz_vp1NiFugeHNfxQ_ancigAFg";
 const AUTH_KEY="siteDiary.auth";
@@ -576,12 +576,17 @@ async function siteGeo(){
   return null}
 function wxInfoHTML(d){
   if(d.weatherManual)return `Weather set by you. <button type="button" class="del" id="wxAuto" style="padding:0;min-height:0">Use automatic weather</button>`;
-  if(d.wx)return `Automatic: ${esc(wxText(d))}`;
+  if(d.wx)return `Automatic: ${esc(wxText(d))}${d.wx.final?"":` <button type="button" class="del" id="wxRetry" style="padding:0;min-height:0">Update</button>`}`;
   if(!String(DEFAULTS.address||"").trim())return "Add the site address to fill in the weather automatically.";
   const g=geoCache();if(g&&g.none)return `Couldn't find the site address for the weather. <button type="button" class="del" id="wxLoc" style="padding:0;min-height:0">Use my location</button>`;
-  return "";
+  if(cur>iso(new Date()))return "The weather fills in automatically on the day.";
+  if(!online())return "No signal. The weather fills in when you're back online.";
+  if(wxState[cur]==="fail")return `Couldn't get the weather. <button type="button" class="del" id="wxRetry" style="padding:0;min-height:0">Try again</button>`;
+  return "Looking up the weather…";
 }
+const wxState={};
 function drawWxInfo(){const e=document.getElementById("wxInfo");if(!e)return;const d=day();e.innerHTML=wxInfoHTML(d);
+  const rt=e.querySelector("#wxRetry");if(rt)rt.onclick=()=>{const x=day();if(x.wx)x.wx.at=0;delete wxState[cur];try{const g=JSON.parse(localStorage.getItem(LSG)||"null");if(g&&g.none)localStorage.removeItem(LSG)}catch(z){}drawWxInfo();autoWeather(cur)};
   const a=e.querySelector("#wxAuto");if(a)a.onclick=()=>{d.weatherManual=false;delete d.wx;queueSave();drawWxInfo();autoWeather(cur)};
   const l=e.querySelector("#wxLoc");if(l)l.onclick=()=>{if(!navigator.geolocation){toast("Location isn't available on this phone");return}
     navigator.geolocation.getCurrentPosition(p=>{try{localStorage.setItem(LSG,JSON.stringify({address:String(DEFAULTS.address||"").trim(),lat:p.coords.latitude,lon:p.coords.longitude,label:"phone location"}))}catch(x){}autoWeather(cur)},()=>toast("Couldn't get your location"))};
@@ -589,7 +594,7 @@ function drawWxInfo(){const e=document.getElementById("wxInfo");if(!e)return;con
 const wxBusy={};
 async function autoWeather(id){
   const d=days[id];if(!d||d.completed||d.weatherManual||!online()||id>iso(new Date())||(d.wx&&(d.wx.final||Date.now()-(d.wx.at||0)<18e5))||wxBusy[id])return;
-  wxBusy[id]=1;
+  wxBusy[id]=1;wxState[id]="loading";let good=false;
   try{
     const g=await siteGeo();if(!g){if(id===cur)drawWxInfo();return}
     const q=`latitude=${g.lat}&longitude=${g.lon}&daily=weather_code,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max&timezone=Australia%2FSydney&start_date=${id}&end_date=${id}`;
@@ -601,8 +606,9 @@ async function autoWeather(id){
     const x=days[id];if(!x||x.completed||x.weatherManual)return;
     x.wx=w;x.weather=wxPick(w);
     if(hasContent(x)){markDay(id);soon()}saveLocal();
-    if(id===cur){const sel=document.querySelector('[data-f=weather]');if(sel&&document.activeElement!==sel)sel.value=x.weather;drawWxInfo()}
-  }catch(e){console.warn("weather",e)}finally{delete wxBusy[id]}
+    good=true;delete wxState[id];
+    if(id===cur){const sel=document.querySelector('[data-f=weather]');if(sel&&document.activeElement!==sel)sel.value=x.weather}
+  }catch(e){console.warn("weather",e)}finally{delete wxBusy[id];if(!good&&wxState[id]==="loading")wxState[id]="fail";if(id===cur)drawWxInfo()}
 }
 
 /* ---------- copy from the previous diary day ---------- */

@@ -1041,7 +1041,14 @@ function wipeLocal(){
 
 /* ---------- no zoom (iPhone ignores the viewport setting, so block the gestures) ---------- */
 ["gesturestart","gesturechange","gestureend"].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
-document.addEventListener("touchmove",e=>{if(e.touches&&e.touches.length>1)e.preventDefault()},{passive:false});
+["touchstart","touchmove"].forEach(t=>document.addEventListener(t,e=>{if(e.touches&&e.touches.length>1)e.preventDefault()},{passive:false}));
+/* If iPhone still manages to zoom (e.g. tapping a box), snap straight back to normal size. */
+(()=>{const vp=document.querySelector('meta[name=viewport]'),base=vp.content;let busy=false;
+  const reset=()=>{if(busy||!window.visualViewport||visualViewport.scale<=1.01)return;busy=true;
+    vp.content=base.replace("maximum-scale=1","maximum-scale=1.01");setTimeout(()=>{vp.content=base;window.scrollTo(0,window.scrollY);busy=false},60)};
+  if(window.visualViewport){visualViewport.addEventListener("resize",reset);visualViewport.addEventListener("scroll",()=>{if(visualViewport.offsetLeft>0)reset()})}
+  document.addEventListener("focusout",()=>setTimeout(reset,100));
+})();
 document.addEventListener("focusout",()=>{setTimeout(()=>{if(window.scrollX)window.scrollTo(0,window.scrollY)},50)});
 
 /* ---------- start ---------- */

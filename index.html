@@ -336,7 +336,7 @@ const PROJ_KEYS=["builder","project","address"];
 function applyProj(){Object.values(days).forEach(x=>{if(x&&typeof x==="object")PROJ_KEYS.forEach(k=>{x[k]=DEFAULTS[k]})})}
 function setProj(v){if(v&&typeof v==="object")PROJ_KEYS.forEach(k=>{if(typeof v[k]==="string")DEFAULTS[k]=v[k]})}
 /* Supabase connection. The publishable (anon) key is safe in the browser: Row Level Security only lets the owner's account read or write. */
-const APP_VERSION="v8";
+const APP_VERSION="v9";
 const SB_URL="https://atvukmvzjnyyvblrjorx.supabase.co";
 const SB_KEY="sb_publishable_7qcokDz_vp1NiFugeHNfxQ_ancigAFg";
 const AUTH_KEY="siteDiary.auth";
@@ -585,16 +585,17 @@ function wxInfoHTML(d){
   if(wxState[cur]==="loading")return "Looking up the weather…";
   return "";
 }
-const wxState={};
+const wxState={},wxAsked={};
 function drawWxInfo(){const e=document.getElementById("wxInfo");if(!e)return;const d=day();
-  e.innerHTML=`<span style="flex:1;min-width:0">${wxInfoHTML(d)}</span><button type="button" class="btn" id="wxGo" style="flex:none;min-height:38px;padding:0 12px;font-size:14px">&#8635; Automatic weather</button>`;
+  const g=geoCache(),noAddr=!!(g&&g.none);
+  e.innerHTML=`${noAddr?`<span style="flex:1;min-width:0">Couldn't find the site address. <button type="button" class="del" id="wxLoc" style="padding:0;min-height:0">Use my location</button></span>`:'<span style="flex:1"></span>'}<button type="button" class="btn" id="wxGo" style="flex:none;min-height:38px;padding:0 12px;font-size:14px">&#8635; Automatic weather</button>`;
   e.querySelector("#wxGo").onclick=()=>{
     if(!String(DEFAULTS.address||"").trim()){toast("Add the site address first");return}
     if(cur>iso(new Date())){toast("The weather can only be filled in on the day");return}
     if(!online()){toast("No signal. Try again when you're online.");return}
     d.weatherManual=false;if(d.wx){d.wx.at=0;d.wx.final=false}delete wxState[cur];
     try{const g=JSON.parse(localStorage.getItem(LSG)||"null");if(g&&g.none)localStorage.removeItem(LSG)}catch(z){}
-    if(hasContent(d))queueSave();wxState[cur]="loading";drawWxInfo();delete wxState[cur];autoWeather(cur)};
+    if(hasContent(d))queueSave();wxAsked[cur]=1;toast("Getting the weather");autoWeather(cur)};
   const l=e.querySelector("#wxLoc");if(l)l.onclick=()=>{if(!navigator.geolocation){toast("Location isn't available on this phone");return}
     navigator.geolocation.getCurrentPosition(p=>{try{localStorage.setItem(LSG,JSON.stringify({address:String(DEFAULTS.address||"").trim(),lat:p.coords.latitude,lon:p.coords.longitude,label:"phone location"}))}catch(x){}autoWeather(cur)},()=>toast("Couldn't get your location"))};
 }
@@ -615,7 +616,9 @@ async function autoWeather(id){
     if(hasContent(x)){markDay(id);soon()}saveLocal();
     good=true;delete wxState[id];
     if(id===cur){const sel=document.querySelector('[data-f=weather]');if(sel&&document.activeElement!==sel)sel.value=x.weather}
-  }catch(e){console.warn("weather",e)}finally{delete wxBusy[id];if(!good&&wxState[id]==="loading")wxState[id]="fail";if(id===cur)drawWxInfo()}
+  }catch(e){console.warn("weather",e)}finally{delete wxBusy[id];if(!good&&wxState[id]==="loading")wxState[id]="fail";
+    if(wxAsked[id]){delete wxAsked[id];const x=days[id];toast(good&&x?`Weather: ${x.weather} (${wxText(x)})`:(geoCache()||{}).none?"Couldn't find the site address":"Couldn't get the weather. Try again later.")}
+    if(id===cur)drawWxInfo()}
 }
 
 /* ---------- copy from the previous diary day ---------- */

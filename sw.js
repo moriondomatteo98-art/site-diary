@@ -1,7 +1,7 @@
 /* Keeps the app itself on the phone so it opens with no signal.
    Diary data is NOT cached here: it lives in the app's own storage and in Supabase.
    Bump VERSION whenever index.html or the lib files change. */
-const VERSION = "site-diary-v8";
+const VERSION = "site-diary-v9";
 const SHELL = [
   "./", "./index.html", "./manifest.webmanifest",
   "./lib/supabase.js", "./lib/jspdf.umd.min.js",

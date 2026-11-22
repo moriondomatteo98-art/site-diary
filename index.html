@@ -336,7 +336,7 @@ const PROJ_KEYS=["builder","project","address"];
 function applyProj(){Object.values(days).forEach(x=>{if(x&&typeof x==="object")PROJ_KEYS.forEach(k=>{x[k]=DEFAULTS[k]})})}
 function setProj(v){if(v&&typeof v==="object")PROJ_KEYS.forEach(k=>{if(typeof v[k]==="string")DEFAULTS[k]=v[k]})}
 /* Supabase connection. The publishable (anon) key is safe in the browser: Row Level Security only lets the owner's account read or write. */
-const APP_VERSION="v12";
+const APP_VERSION="v13";
 const SB_URL="https://atvukmvzjnyyvblrjorx.supabase.co";
 const SB_KEY="sb_publishable_7qcokDz_vp1NiFugeHNfxQ_ancigAFg";
 const AUTH_KEY="siteDiary.auth";
@@ -768,7 +768,7 @@ function yearOK(s){
   const mn=Math.min(mx,...Object.keys(days).filter(k=>hasContent(days[k])).map(k=>Number(k.slice(0,4))));
   return y>=mn&&y<=mx;
 }
-function go(s){if(!yearOK(s)){toast("The year is locked to "+new Date().getFullYear());return}cur=s;try{location.hash=s}catch(e){}render()}
+function go(s){if(!yearOK(s)){toast("The year is locked to "+new Date().getFullYear());return}cur=s;render()}
 
 /* ---------- dialog helper ---------- */
 function sheet(title,body,okLabel,onOk,onMount){
@@ -1267,8 +1267,9 @@ document.addEventListener("focusout",()=>{setTimeout(()=>{if(window.scrollX)wind
 
 /* ---------- start ---------- */
 loadLocal();loadOutbox();
-const h0=(location.hash||"").slice(1);
-cur=/^\d{4}-\d{2}-\d{2}$/.test(h0)&&yearOK(h0)?h0:iso(new Date());
+/* Always open on today. Drop an old date left in the address from earlier versions. */
+if(/^#\d{4}-\d{2}-\d{2}$/.test(location.hash)){try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}}
+cur=iso(new Date());
 render();finalStatus();
 if(!storedUser()&&!/access_token|type=recovery/.test(location.hash))showLogin(true);
 if(sb){
@@ -1283,7 +1284,13 @@ window.addEventListener("online",()=>{pull().then(flush)});
 window.addEventListener("offline",finalStatus);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){pull().then(flush)}else{clearTimeout(saveTimer);saveLocal();flush()}});
 setInterval(()=>{if(pendingCount())flush()},30000);
-window.addEventListener("hashchange",()=>{const s=(location.hash||"").slice(1);if(/^\d{4}-\d{2}-\d{2}$/.test(s)&&s!==cur&&yearOK(s)){cur=s;render()}});
+/* Coming back to the app after 10+ minutes (or on a new day): jump to today. */
+let hiddenAt=0;
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="hidden"){hiddenAt=Date.now();return}
+  const t=iso(new Date()),away=hiddenAt&&Date.now()-hiddenAt>6e5;
+  if(cur!==t&&(away||iso(new Date(hiddenAt||Date.now()))!==t)&&!document.querySelector("dialog[open]")){cur=t;render();scrollTo(0,0)}
+});
 if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>

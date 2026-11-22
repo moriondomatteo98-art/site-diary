@@ -336,7 +336,7 @@ const PROJ_KEYS=["builder","project","address"];
 function applyProj(){Object.values(days).forEach(x=>{if(x&&typeof x==="object")PROJ_KEYS.forEach(k=>{x[k]=DEFAULTS[k]})})}
 function setProj(v){if(v&&typeof v==="object")PROJ_KEYS.forEach(k=>{if(typeof v[k]==="string")DEFAULTS[k]=v[k]})}
 /* Supabase connection. The publishable (anon) key is safe in the browser: Row Level Security only lets the owner's account read or write. */
-const APP_VERSION="v9";
+const APP_VERSION="v10";
 const SB_URL="https://atvukmvzjnyyvblrjorx.supabase.co";
 const SB_KEY="sb_publishable_7qcokDz_vp1NiFugeHNfxQ_ancigAFg";
 const AUTH_KEY="siteDiary.auth";
@@ -649,6 +649,28 @@ function backupFlow(){
   });
 }
 
+/* ---------- type-and-OK lists (pour, handover, variations, delays, accidents). Stored as one line per item. ---------- */
+const LIST_PH={pour:"e.g. Lift pads 8&9, 24 m3",handover:"e.g. Deck L2 zone A handed over",variations:"e.g. Sump TC1 base",delays:"e.g. Pump late, 1 h lost",accidents:"e.g. None to report"};
+const items=v=>String(v||"").split("\n").map(x=>x.trim()).filter(Boolean);
+function listItemsHTML(f){const L=items(day()[f]);
+  return L.length?L.map((t,i)=>`<div class="it"><span style="white-space:pre-wrap;overflow-wrap:anywhere;min-width:0">${esc(t)}</span><span style="display:flex;gap:10px;flex:none"><button type="button" class="del" data-le="${f}" data-i="${i}" style="color:var(--ink)">Edit</button><button type="button" class="del" data-lr="${f}" data-i="${i}">Remove</button></span></div>`).join(""):'<div class="empty">Nothing added yet.</div>'}
+function listHTML(f){return `<div class="row" style="grid-template-columns:1fr auto"><input type="text" data-li="${f}" data-day="${cur}" placeholder="${esc(LIST_PH[f]||"Type here")}" aria-label="Add to ${esc(f)}" enterkeyhint="done"><button class="btn primary" type="button" data-lok="${f}">OK</button></div>
+  <div class="dl" data-list="${f}">${listItemsHTML(f)}</div>`}
+function wireListsTyped(root){
+  const redraw=f=>{const box=root.querySelector(`[data-list="${f}"]`);box.innerHTML=listItemsHTML(f);wireItems(box)};
+  const setL=(f,L)=>{day()[f]=L.join("\n");queueSave();redraw(f)};
+  const wireItems=box=>{
+    box.querySelectorAll("[data-lr]").forEach(b=>b.onclick=()=>{const f=b.dataset.lr,L=items(day()[f]);L.splice(Number(b.dataset.i),1);setL(f,L)});
+    box.querySelectorAll("[data-le]").forEach(b=>b.onclick=()=>{const f=b.dataset.le,i=Number(b.dataset.i),L=items(day()[f]);
+      sheet("Edit",`<textarea id="lt" rows="3">${esc(L[i])}</textarea>`,"Save",bb=>{const t=bb.querySelector("#lt").value.replace(/\s*\n\s*/g," ").trim();if(!t){toast("Write something, or use Remove");return false}L[i]=t;setL(f,L)})});
+  };
+  root.querySelectorAll("[data-list]").forEach(wireItems);
+  root.querySelectorAll("[data-lok]").forEach(b=>{const f=b.dataset.lok,inp=root.querySelector(`[data-li="${f}"]`);
+    const add=()=>{const t=inp.value.replace(/\s*\n\s*/g," ").trim();if(!t){toast("Type something first");inp.focus();return}
+      const L=items(day()[f]);L.push(t);inp.value="";setL(f,L);inp.focus()};
+    b.onclick=add;inp.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();add()}}});
+}
+
 /* ---------- completed day: read-only preview laid out like the PDF ---------- */
 function previewHTML(d,id){
   const v=t=>{t=String(t==null?"":t).trim();return t?esc(t):'<span class="rp-e">-</span>'};
@@ -711,17 +733,17 @@ function renderDetails(){
   <section class="card"><h2>Manpower</h2>${crewHTML()}</section>
   <section class="card risk"><h2>Risk of the day</h2>${riskCards()}<button class="ghost" data-add="risk">+ Add risk</button></section>
   <section class="card"><h2>Crane activity</h2>${craneHTML()}</section>
-  <section class="card"><h2>Concrete pour</h2><textarea data-f="pour" placeholder="Location, volume, supplier, times"></textarea></section>
+  <section class="card"><h2>Concrete pour</h2>${listHTML("pour")}</section>
   <section class="card"><h2>Deliveries</h2>${deliveryList()}<button class="ghost" data-add="delivery">+ Add delivery</button></section>
   <section class="card"><h2>Site activity</h2><textarea data-f="activity"></textarea></section>
-  <section class="card"><h2>Deck and verticals handover</h2><textarea data-f="handover"></textarea></section>
-  <section class="card"><h2>Variations</h2><textarea data-f="variations"></textarea></section>
-  <section class="card"><h2>Delays</h2><textarea data-f="delays"></textarea></section>
+  <section class="card"><h2>Deck and verticals handover</h2>${listHTML("handover")}</section>
+  <section class="card"><h2>Variations</h2>${listHTML("variations")}</section>
+  <section class="card"><h2>Delays</h2>${listHTML("delays")}</section>
   <section class="card"><h2>Ongoing delays</h2><textarea data-f="ongoing"></textarea></section>
-  <section class="card"><h2>Accidents and injuries</h2><textarea data-f="accidents" placeholder="Write None if nothing to report"></textarea></section>
+  <section class="card"><h2>Accidents and injuries</h2>${listHTML("accidents")}</section>
   <section class="card"><h2>Photos</h2>${photoGrid()}<button class="ghost" data-add="photo">+ Add photo</button></section>
   <button class="btn ${d.completed?"":"primary"}" id="doneBtn" style="min-height:54px;font-size:17px;${d.completed?"border-color:var(--ok);color:var(--ok)":""}">${d.completed?"Completed. Tap to reopen this day":"Complete this day"}</button>`;
-  bindFields($("#app"));wireLists($("#app"));wireCrew($("#app"));drawAreas($("#app"));
+  bindFields($("#app"));wireLists($("#app"));wireListsTyped($("#app"));wireCrew($("#app"));drawAreas($("#app"));
   if($("#copyPrev"))$("#copyPrev").onclick=()=>copyFrom($("#copyPrev").dataset.prev);
   drawWxInfo();autoWeather(cur);
   wireCrane($("#app"));
@@ -735,7 +757,9 @@ function renderDetails(){
   }else $("#app").classList.remove("locked");
   status(...(status.last||["Loading"]));
 }
-function render(){
+function flushTyped(){document.querySelectorAll("#app [data-li]").forEach(i=>{const t=i.value.trim(),k=i.dataset.day,f=i.dataset.li,x=days[k];
+  if(t&&x){x[f]=[...items(x[f]),t.replace(/\s*\n\s*/g," ")].join("\n");i.value="";markDay(k);saveLocal();soon()}})}
+function render(){flushTyped();
   $("#date").textContent=new Date(cur+"T12:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
   renderDetails();
 }

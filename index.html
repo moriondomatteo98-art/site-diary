@@ -336,7 +336,7 @@ const PROJ_KEYS=["builder","project","address"];
 function applyProj(){Object.values(days).forEach(x=>{if(x&&typeof x==="object")PROJ_KEYS.forEach(k=>{x[k]=DEFAULTS[k]})})}
 function setProj(v){if(v&&typeof v==="object")PROJ_KEYS.forEach(k=>{if(typeof v[k]==="string")DEFAULTS[k]=v[k]})}
 /* Supabase connection. The publishable (anon) key is safe in the browser: Row Level Security only lets the owner's account read or write. */
-const APP_VERSION="v10";
+const APP_VERSION="v11";
 const SB_URL="https://atvukmvzjnyyvblrjorx.supabase.co";
 const SB_KEY="sb_publishable_7qcokDz_vp1NiFugeHNfxQ_ancigAFg";
 const AUTH_KEY="siteDiary.auth";
@@ -650,7 +650,7 @@ function backupFlow(){
 }
 
 /* ---------- type-and-OK lists (pour, handover, variations, delays, accidents). Stored as one line per item. ---------- */
-const LIST_PH={pour:"e.g. Lift pads 8&9, 24 m3",handover:"e.g. Deck L2 zone A handed over",variations:"e.g. Sump TC1 base",delays:"e.g. Pump late, 1 h lost",accidents:"e.g. None to report"};
+const LIST_PH={pour:"e.g. Lift pads 8&9, 24 m3",handover:"e.g. Deck L2 zone A handed over",variations:"e.g. Sump TC1 base",delays:"e.g. Pump late, 1 h lost",ongoing:"e.g. Waiting on pump availability",accidents:"e.g. None to report"};
 const items=v=>String(v||"").split("\n").map(x=>x.trim()).filter(Boolean);
 function listItemsHTML(f){const L=items(day()[f]);
   return L.length?L.map((t,i)=>`<div class="it"><span style="white-space:pre-wrap;overflow-wrap:anywhere;min-width:0">${esc(t)}</span><span style="display:flex;gap:10px;flex:none"><button type="button" class="del" data-le="${f}" data-i="${i}" style="color:var(--ink)">Edit</button><button type="button" class="del" data-lr="${f}" data-i="${i}">Remove</button></span></div>`).join(""):'<div class="empty">Nothing added yet.</div>'}
@@ -739,7 +739,7 @@ function renderDetails(){
   <section class="card"><h2>Deck and verticals handover</h2>${listHTML("handover")}</section>
   <section class="card"><h2>Variations</h2>${listHTML("variations")}</section>
   <section class="card"><h2>Delays</h2>${listHTML("delays")}</section>
-  <section class="card"><h2>Ongoing delays</h2><textarea data-f="ongoing"></textarea></section>
+  <section class="card"><h2>Ongoing delays</h2>${listHTML("ongoing")}</section>
   <section class="card"><h2>Accidents and injuries</h2>${listHTML("accidents")}</section>
   <section class="card"><h2>Photos</h2>${photoGrid()}<button class="ghost" data-add="photo">+ Add photo</button></section>
   <button class="btn ${d.completed?"":"primary"}" id="doneBtn" style="min-height:54px;font-size:17px;${d.completed?"border-color:var(--ok);color:var(--ok)":""}">${d.completed?"Completed. Tap to reopen this day":"Complete this day"}</button>`;

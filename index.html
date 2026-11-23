@@ -364,7 +364,7 @@ const PROJ_KEYS=["builder","project","address"];
 function applyProj(){Object.values(days).forEach(x=>{if(x&&typeof x==="object")PROJ_KEYS.forEach(k=>{x[k]=DEFAULTS[k]})})}
 function setProj(v){if(v&&typeof v==="object")PROJ_KEYS.forEach(k=>{if(typeof v[k]==="string")DEFAULTS[k]=v[k]})}
 /* Supabase connection. The publishable (anon) key is safe in the browser: Row Level Security only lets the owner's account read or write. */
-const APP_VERSION="v15";
+const APP_VERSION="v16";
 const SB_URL="https://atvukmvzjnyyvblrjorx.supabase.co";
 const SB_KEY="sb_publishable_7qcokDz_vp1NiFugeHNfxQ_ancigAFg";
 const AUTH_KEY="siteDiary.auth";
@@ -782,6 +782,9 @@ function regRowHTML(k,x,compact){
 function wireRegRows(root){root.querySelectorAll("[data-reg]").forEach(b=>b.onclick=()=>{const [k,id]=[b.dataset.reg[0],b.dataset.reg.slice(2)];openReg(k,id)});
   root.querySelectorAll("[data-newreg]").forEach(b=>b.onclick=()=>openReg(b.dataset.newreg,null,cur))}
 function regDayCard(k,day){const L=regDay(k,day);return `<div class="reg-list">${L.map(x=>regRowHTML(k,x,true)).join("")||`<div class="empty">No ${k==="d"?"delays":"variations"} started this day.</div>`}</div>`}
+function regDelaysForDay(day){const a=regDay("d",day),ids=new Set(a.map(x=>x.id));return {today:a,carried:regOngoing(day).filter(x=>!ids.has(x.id))}}
+const regDelayRows=day=>{const R=regDelaysForDay(day);return R.today.map(x=>regRowHTML("d",x,true)).join("")+R.carried.map(x=>regRowHTML("d",x,false)).join("")};
+const regDelayLines=day=>{const R=regDelaysForDay(day);return [...R.today.map(regLineD),...R.carried.map(regLineOngoing)]};
 function regOngoingCard(day){const L=regOngoing(day);return `<div class="reg-list">${L.map(x=>regRowHTML("d",x,false)).join("")||'<div class="empty">No ongoing delays.</div>'}</div>`}
 const regLineD=x=>`${refLabel("d",x)} ${x.start_time||""} ${x.description||""} [${[x.status,fmtHrs(delayHours(x)),x.cause,x.area,x.crane_affected?"crane affected":""].filter(Boolean).join(", ")}]`.replace(/\s+/g," ").trim();
 const regLineV=x=>`${refLabel("v",x)} ${x.description||""} [${[x.status,x.reference?"Ref "+x.reference:"",x.area].filter(Boolean).join(", ")}]`.replace(/\s+/g," ").trim();
@@ -916,8 +919,7 @@ function previewHTML(d,id){
     ${sec("Deliveries",dels)}
     ${box("Site activity",d.activity)}
     ${box("Deck and verticals handover",d.handover)}
-    ${sec("Delays",`<div class="reg-list">${regDay("d",id).map(x=>regRowHTML("d",x,true)).join("")||'<span class="rp-e">-</span>'}</div>`)}
-    ${sec("Ongoing delays",`<div class="reg-list">${regOngoing(id).map(x=>regRowHTML("d",x,false)).join("")||'<span class="rp-e">-</span>'}</div>`)}
+    ${sec("Delays",`<div class="reg-list">${regDelayRows(id)||'<span class="rp-e">-</span>'}</div>`)}
     ${sec("Variations",`<div class="reg-list">${regDay("v",id).map(x=>regRowHTML("v",x,true)).join("")||'<span class="rp-e">-</span>'}</div>`)}
     ${box("Accidents / injuries",d.accidents)}
     ${photos}
@@ -963,8 +965,7 @@ function renderDetails(){
   <section class="card"><h2>Site activity</h2>${listHTML("activity")}</section>
   <section class="card"><h2>Deck and verticals handover</h2>${listHTML("handover")}</section>
   <section class="card"><h2>Variations</h2>${regDayCard("v",cur)}<button class="ghost" type="button" data-newreg="v">+ Add variation</button></section>
-  <section class="card"><h2>Delays</h2>${regDayCard("d",cur)}<button class="ghost" type="button" data-newreg="d">+ Add delay</button></section>
-  <section class="card"><h2>Ongoing delays</h2>${regOngoingCard(cur)}</section>
+  <section class="card"><h2>Delays</h2><div class="reg-list">${regDelayRows(cur)||'<div class="empty">No delays this day.</div>'}</div><button class="ghost" type="button" data-newreg="d">+ Add delay</button></section>
   <section class="card"><h2>Accidents and injuries</h2>${listHTML("accidents")}</section>
   <section class="card"><h2>Photos</h2>${photoGrid()}<button class="ghost" data-add="photo">+ Add photo</button></section>
   <button class="btn ${d.completed?"":"primary"}" id="doneBtn" style="min-height:54px;font-size:17px;${d.completed?"border-color:var(--ok);color:var(--ok)":""}">${d.completed?"Completed. Tap to reopen this day":"Complete this day"}</button>`;
@@ -1202,7 +1203,7 @@ function asText(id){
   L.push("","CRANE ACTIVITY",`  Hours: ${craneRanges(d).join(", ")||"-"}`);if(d.craneNote)L.push(`  Notes: ${d.craneNote}`);
   L.push("",`CONCRETE POUR: ${d.pour||"-"}`,"","DELIVERIES");
   if(d.deliveries.length)d.deliveries.forEach(r=>L.push(`  ${r.dir||"Delivery"}: ${r.type||""}  (${r.arrive||"--:--"} to ${r.depart||"--:--"})`));else L.push("  -");
-  L.push("",`SITE ACTIVITY: ${d.activity||"-"}`,`DECK AND VERTICALS HANDOVER: ${d.handover||"-"}`,`VARIATIONS: ${regDay("v",id).map(regLineV).join("; ")||"-"}`,`DELAYS: ${regDay("d",id).map(regLineD).join("; ")||"-"}`,`ONGOING DELAYS: ${regOngoing(id).map(regLineOngoing).join("; ")||"-"}`,`ACCIDENTS / INJURIES: ${d.accidents||"-"}`);
+  L.push("",`SITE ACTIVITY: ${d.activity||"-"}`,`DECK AND VERTICALS HANDOVER: ${d.handover||"-"}`,`VARIATIONS: ${regDay("v",id).map(regLineV).join("; ")||"-"}`,`DELAYS: ${regDelayLines(id).join("; ")||"-"}`,`ACCIDENTS / INJURIES: ${d.accidents||"-"}`);
   if(d.photos.length){L.push("","PHOTOS");d.photos.forEach((p,i)=>L.push(`  ${i+1}. ${p.caption||"(no caption)"}`))}
   return L.join("\n");
 }
@@ -1309,8 +1310,7 @@ async function buildPDFNew(ids){
       y+=4}
     textBox("Site activity",d.activity);
     two("Deck and verticals handover",d.handover,"Accidents / injuries",d.accidents);
-    textBox("Delays",regDay("d",did).map(regLineD).join("\n"));
-    textBox("Ongoing delays",regOngoing(did).map(regLineOngoing).join("\n"));
+    textBox("Delays",regDelayLines(did).join("\n"));
     textBox("Variations",regDay("v",did).map(regLineV).join("\n"));
     // photos
     if(d.photos.length){

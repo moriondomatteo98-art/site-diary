@@ -8,8 +8,13 @@ Status: ✅ done · 🔜 to do · ❌ dropped
 3. ✅ **Automatic weather** – fills in the weather for the site address from Open-Meteo, with temperatures, rain (mm) and wind. Rain is shown on the PDF. Choosing the weather yourself always wins. *(v6)*
 4. ❌ ~~Reminder if a day isn't completed~~ – not wanted.
 
+## Done since
+- ✅ **Type-and-OK lists** for site activity, concrete pour, handover, accidents *(v10–v12)*
+- ✅ **Always opens on today** *(v13)*
+- ✅ **Delay and Variation registers** – own screen, D-01 / V-01 numbers, statuses, causes, hours lost, photos, search and filter *(v14)*
+
 ## Useful for reporting
-5. 🔜 **Weekly / monthly summary** – one page with total man-days per trade, delay hours, pours and deliveries for the period.
+5. 🔜 **Delay and variation reports** (from the registers) and **weekly / monthly summary** – one page with total man-days per trade, delay hours, pours and deliveries for the period.
 6. 🔜 **Search** – find every day that mentions a word (e.g. "pump", "TC1").
 7. 🔜 **Photo markup** – draw arrows or circles on a photo before saving it.
 8. 🔜 **Signature on completion** – sign with your finger when completing a day; printed on the PDF.

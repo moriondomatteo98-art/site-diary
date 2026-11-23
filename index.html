@@ -188,6 +188,25 @@ body.auth #bar,body.auth #app{display:none}
 .acct{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:12px;font-size:13px;color:var(--muted)}
 .acct span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .photo img:not([src]){background:var(--line)}
+/* Registers */
+@media (max-width:440px){.top .tag{display:none}.top #regBtn{margin-left:auto}}
+.top button#regBtn.cur{background:#0b0b0b;color:#fff}
+.regh{font:700 26px var(--display)}.regh::after{content:".";color:var(--brand)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1 1 auto;min-height:44px;padding:0 10px;border-radius:8px;border:2px solid var(--line);background:var(--bg);font-weight:600;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+#regQ{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:44px;width:100%;color:var(--ink)}
+.reg-list{display:flex;flex-direction:column;gap:8px}
+.reg-row{display:flex;flex-direction:column;gap:3px;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;color:var(--ink)}
+.card .reg-row,.rp .reg-row{background:var(--bg)}
+.rp .reg-row{background:#fafafa;color:#1d1f22;border-color:#e6e6e6}
+.reg-row .t{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);min-width:0}
+.reg-row .t b{color:var(--ink);font:700 15px var(--display)}.rp .reg-row .t b{color:#1d1f22}
+.reg-row .t .pill{margin-left:auto;flex:none}
+.reg-row .ds{font-size:15px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.reg-row small{color:var(--muted);font-size:13px}
+.pill.neu{color:var(--muted)}
+.lbl{font-size:14px;color:var(--muted);font-weight:500;margin-bottom:6px}
 /* Completed-day preview: always looks like the printed page (white paper), also in dark mode */
 .rp{background:#fff;color:#1d1f22;border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:16px 14px;display:flex;flex-direction:column;gap:14px;font-size:14px}
 .rp-hd{display:flex;justify-content:space-between;align-items:center;gap:12px}
@@ -233,6 +252,7 @@ body.auth #bar,body.auth #app{display:none}
 <header class="top">
   <div class="r1">
     <img id="logo" alt="Transform Group" width="154" height="32"><span class="tag">Site diary</span>
+    <button id="regBtn" type="button">Registers</button>
     <button id="pdfBtn" class="on">PDF</button>
   </div>
   <div class="r2">
@@ -321,7 +341,7 @@ const craneRanges=d=>{const hs=SLOTS.filter(s=>(d.craneHrs||[]).includes(s)),out
   if(st)out.push(rg(st,pv));return out};
 const day=()=>days[cur]=fix(days[cur]||blank());
 const hasContent=d=>!!(d&&(d.activity||d.areas||(d.areasSel||[]).length||(d.risks||[]).length||(d.deliveries||[]).length||(d.photos||[]).length||CREW.some(n=>(d.crew||{})[n])||(d.craneHrs||[]).length||d.craneNote||d.delays||d.pour||d.handover||d.variations||d.ongoing||d.accidents));
-const dayStatus=k=>{const d=days[k];if(!d)return"blank";if(d.completed)return"done";return hasContent(d)?"wip":"blank"};
+const dayStatus=k=>{const d=days[k];if(d&&d.completed)return"done";return (d&&hasContent(d))||regStarted(k)?"wip":"blank"};
 const total=d=>CREW.reduce((a,n)=>a+(d.crew[n]||0),0);
 const sevLabel=v=>v==="med"?"Medium":v==="high"?"High":"Low";
 
@@ -336,7 +356,7 @@ const PROJ_KEYS=["builder","project","address"];
 function applyProj(){Object.values(days).forEach(x=>{if(x&&typeof x==="object")PROJ_KEYS.forEach(k=>{x[k]=DEFAULTS[k]})})}
 function setProj(v){if(v&&typeof v==="object")PROJ_KEYS.forEach(k=>{if(typeof v[k]==="string")DEFAULTS[k]=v[k]})}
 /* Supabase connection. The publishable (anon) key is safe in the browser: Row Level Security only lets the owner's account read or write. */
-const APP_VERSION="v13";
+const APP_VERSION="v14";
 const SB_URL="https://atvukmvzjnyyvblrjorx.supabase.co";
 const SB_KEY="sb_publishable_7qcokDz_vp1NiFugeHNfxQ_ancigAFg";
 const AUTH_KEY="siteDiary.auth";
@@ -346,10 +366,10 @@ function storedUser(){try{const s=JSON.parse(localStorage.getItem(AUTH_KEY)||"nu
 
 /* Local outbox: what still has to reach Supabase. Survives closing the app. */
 const LSQ="siteDiary.outbox.v1";
-let outbox={days:{},settings:{},uploads:[],removes:[]};
-function loadOutbox(){try{const o=JSON.parse(localStorage.getItem(LSQ)||"null");if(o&&typeof o==="object")outbox={days:o.days||{},settings:o.settings||{},uploads:o.uploads||[],removes:o.removes||[]}}catch(e){}}
+let outbox={days:{},settings:{},uploads:[],removes:[],reg:{},regDel:[]};
+function loadOutbox(){try{const o=JSON.parse(localStorage.getItem(LSQ)||"null");if(o&&typeof o==="object")outbox={days:o.days||{},settings:o.settings||{},uploads:o.uploads||[],removes:o.removes||[],reg:o.reg||{},regDel:o.regDel||[]}}catch(e){}}
 function saveOutbox(){try{localStorage.setItem(LSQ,JSON.stringify(outbox))}catch(e){}}
-const pendingCount=()=>Object.keys(outbox.days).length+Object.keys(outbox.settings).length+outbox.uploads.length+outbox.removes.length;
+const pendingCount=()=>Object.keys(outbox.days).length+Object.keys(outbox.settings).length+outbox.uploads.length+outbox.removes.length+Object.keys(outbox.reg).length+outbox.regDel.length;
 let stamp=0;const tick=()=>{stamp=Math.max(stamp+1,Date.now());return stamp};
 function markDay(id){if(!id)return;outbox.days[id]=tick();saveOutbox()}
 function markSetting(k){outbox.settings[k]=tick();saveOutbox()}
@@ -368,10 +388,11 @@ async function photoBlob(p){
 async function photoURL(p){if(photoURLs[p.id])return photoURLs[p.id];const b=await photoBlob(p);return photoURLs[p.id]=URL.createObjectURL(b)}
 function fillPhotos(root){root.querySelectorAll("img[data-pid]").forEach(im=>{const p=findPhoto(im.dataset.pid);if(!p)return;
   photoURL(p).then(u=>{im.src=u}).catch(()=>{im.alt="Photo not on this phone yet";im.removeAttribute("src")})})}
-function findPhoto(id){for(const k in days){const d=days[k];const p=d&&Array.isArray(d.photos)&&d.photos.find(x=>x.id===id);if(p)return p}return null}
+function findPhoto(id){for(const k in days){const d=days[k];const p=d&&Array.isArray(d.photos)&&d.photos.find(x=>x.id===id);if(p)return p}
+  for(const k of ["d","v"])for(const x of Object.values(reg[k])){const p=(x.photos||[]).find(z=>z.id===id);if(p)return p}return null}
 const uuid=()=>{if(crypto.randomUUID)return crypto.randomUUID();const b=crypto.getRandomValues(new Uint8Array(16));b[6]=b[6]&15|64;b[8]=b[8]&63|128;const h=[...b].map(x=>x.toString(16).padStart(2,"0")).join("");return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`};
 
-const settingValue=k=>k==="project"?Object.fromEntries(PROJ_KEYS.map(x=>[x,DEFAULTS[x]])):k==="risks"?{list:clone(risks)}:k==="areas"?{list:areasList.slice()}:{list:delTypes.slice()};
+const settingValue=k=>k==="project"?Object.fromEntries(PROJ_KEYS.map(x=>[x,DEFAULTS[x]])):k==="risks"?{list:clone(risks)}:k==="areas"?{list:areasList.slice()}:k==="causes"?{list:causes.slice()}:{list:delTypes.slice()};
 const dayData=d=>{const o=clone(d);delete o.photos;PROJ_KEYS.forEach(k=>delete o[k]);return o};
 const online=()=>navigator.onLine!==false;
 let flushing=false,again=false,flushTimer=null;
@@ -400,6 +421,7 @@ async function flush(){
         const r3=await q;if(r3.error)throw r3.error;
       }
       if(outbox.days[id]===ts){delete outbox.days[id];saveOutbox()}}
+    await flushReg(u);
     if(outbox.removes.length){const paths=outbox.removes.slice();const {error}=await sb.storage.from("photos").remove(paths);if(error)throw error;
       outbox.removes=outbox.removes.filter(x=>!paths.includes(x));saveOutbox()}
   }catch(e){console.warn("sync",e)}
@@ -420,7 +442,9 @@ async function pull(){
       if(r.key==="project")setProj(v);
       else if(r.key==="risks"){const n=normRisks(v.list);if(n.length)risks=n}
       else if(r.key==="areas"){const n=strList(v.list);if(n.length)areasList=n}
-      else if(r.key==="delivery"){const n=strList(v.list);if(n.length)delTypes=n}});
+      else if(r.key==="delivery"){const n=strList(v.list);if(n.length)delTypes=n}
+      else if(r.key==="causes"){const n=strList(v.list);if(n.length)causes=n}});
+    await pullReg();
     applyProj();saveLocal();
     const ae=document.activeElement;
     if(!document.querySelector("dialog[open]")&&!(ae&&ae.matches&&ae.matches("input,textarea,select")))render();
@@ -624,12 +648,12 @@ async function autoWeather(id){
 /* ---------- copy from the previous diary day ---------- */
 const shortDay=k=>new Date(k+"T12:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});
 function prevDiaryDay(id){return Object.keys(days).filter(k=>k<id&&hasContent(days[k])).sort().pop()||null}
-const copyPart=x=>JSON.stringify([x.crew,x.areasSel,x.risks,x.ongoing||"",String(x.hours)]);
+const copyPart=x=>JSON.stringify([x.crew,x.areasSel,x.risks,String(x.hours)]);
 function sameAsPrev(d,prev){const p=days[prev];return !!p&&copyPart(fix(clone(d)))===copyPart(fix(clone(p)))}
 function copyFrom(prev){const d=day(),p=fix(clone(days[prev]));
-  const has=CREW.some(n=>d.crew[n])||d.areasSel.length||d.risks.length||String(d.ongoing||"").trim();
-  if(has&&!confirm(`Replace today's crew numbers, working areas, risks, hours and ongoing delays with ${shortDay(prev)}'s?`))return;
-  d.crew=clone(p.crew);d.areasSel=p.areasSel.slice();d.areas=p.areas;d.risks=clone(p.risks);d.ongoing=p.ongoing;d.hours=p.hours;
+  const has=CREW.some(n=>d.crew[n])||d.areasSel.length||d.risks.length;
+  if(has&&!confirm(`Replace today's crew numbers, working areas, risks and hours with ${shortDay(prev)}'s?`))return;
+  d.crew=clone(p.crew);d.areasSel=p.areasSel.slice();d.areas=p.areas;d.risks=clone(p.risks);d.hours=p.hours;
   queueSave();render();scrollTo(0,0);toast("Copied from "+shortDay(prev))}
 
 /* ---------- backup to a file ---------- */
@@ -642,9 +666,14 @@ function backupFlow(){
     for(const k of Object.keys(days).sort()){const x=days[k];if(!x||!(hasContent(x)||x.completed))continue;const c=clone(x);
       if(withPh)for(const p of c.photos||[]){try{p.data=await toDataUrl(await photoBlob(p))}catch(e){miss++}}
       out.diary[k]=c;n++}
+    out.settings.causes=causes.slice();
+    out.registers={delays:[],variations:[]};
+    for(const [k,name] of [["d","delays"],["v","variations"]])for(const x of regSorted(k).reverse()){const c=clone(x);c.ref=refLabel(k,x);delete c._synced;
+      if(withPh)for(const p of c.photos||[]){try{p.data=await toDataUrl(await photoBlob(p))}catch(e){miss++}}
+      out.registers[name].push(c)}
     const fn=`site-diary-backup-${iso(new Date())}.json`;
     offerFile(m,new Blob([JSON.stringify(out,null,1)],{type:"application/json"}),fn,"application/json","backup");
-    m.insertAdjacentHTML("afterbegin",`<div>${n} day${n===1?"":"s"} saved${withPh?miss?`, ${miss} photo(s) couldn't be loaded (no signal?)`:", with photos":""}.</div>`);
+    m.insertAdjacentHTML("afterbegin",`<div>${n} day${n===1?"":"s"}, ${Object.keys(reg.d).length} delays and ${Object.keys(reg.v).length} variations saved${withPh?miss?`, ${miss} photo(s) couldn't be loaded (no signal?)`:", with photos":""}.</div>`);
     return false;
   });
 }
@@ -671,6 +700,191 @@ function wireListsTyped(root){
     b.onclick=add;inp.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();add()}}});
 }
 
+/* ---------- registers: delays and variations (own Supabase tables, synced per item) ---------- */
+const LSRG="siteDiary.registers.v1",LSCA="siteDiary.causes.v1",LSRC="siteDiary.regctr.v1";
+const DELAY_STATUS=["Ongoing","Resolved"],VAR_STATUS=["Raised","Awaiting approval","Approved","Rejected"];
+const DEF_CAUSES=["Weather","Late delivery","Design info / RFI","Access","Other"];
+let reg={d:{},v:{}},causes=DEF_CAUSES.slice(),regCtr={d:0,v:0},regTab="d",regFilter={d:"All",v:"All"},regQuery="";
+function loadReg(){
+  try{const r=JSON.parse(localStorage.getItem(LSRG)||"null");reg=r&&r.d&&r.v?r:{d:{},v:{}}}catch(e){reg={d:{},v:{}}}
+  try{const c=strList(JSON.parse(localStorage.getItem(LSCA)||"null"));causes=c.length?c:DEF_CAUSES.slice()}catch(e){causes=DEF_CAUSES.slice()}
+  try{const n=JSON.parse(localStorage.getItem(LSRC)||"null");regCtr={d:Number(n&&n.d)||0,v:Number(n&&n.v)||0}}catch(e){regCtr={d:0,v:0}}
+}
+function saveReg(){try{localStorage.setItem(LSRG,JSON.stringify(reg));localStorage.setItem(LSCA,JSON.stringify(causes));localStorage.setItem(LSRC,JSON.stringify(regCtr))}catch(e){}}
+const REG_TBL={d:"delays",v:"variations"},REG_P={d:"D",v:"V"};
+const refLabel=(k,x)=>`${REG_P[k]}-${String(x.ref_no||0).padStart(2,"0")}`;
+const maxRef=k=>Math.max(0,...Object.values(reg[k]).map(x=>Number(x.ref_no)||0));
+function nextRef(k){const n=Math.max(regCtr[k]||0,maxRef(k))+1;regCtr[k]=n;return n}
+const dtOf=(d,t)=>d?new Date(`${d}T${/^\d{2}:\d{2}$/.test(t||"")?t:"00:00"}:00`):null;
+function calcHours(x){if(x.status!=="Resolved"||!/^\d{2}:\d{2}$/.test(x.start_time||"")||!/^\d{2}:\d{2}$/.test(x.resolved_time||""))return null;const s=dtOf(x.start_date,x.start_time),e=dtOf(x.resolved_date,x.resolved_time);if(!s||!e)return null;
+  const h=(e-s)/36e5;return h>0?Math.round(h*4)/4:0}
+const numOrNull=v=>v===""||v==null||isNaN(Number(v))?null:Number(v);
+function delayHours(x){const m=numOrNull(x.hours_manual);return m!=null?m:calcHours(x)}
+const fmtHrs=h=>h==null?"":`${+Number(h).toFixed(2)} h`;
+const statusPill=s=>({Ongoing:"med",Resolved:"low",Raised:"neu","Awaiting approval":"med",Approved:"low",Rejected:"high"})[s]||"neu";
+function regSorted(k){const L=Object.values(reg[k]);
+  return k==="d"?L.sort((a,b)=>(b.start_date+(b.start_time||"")).localeCompare(a.start_date+(a.start_time||""))||(b.ref_no-a.ref_no))
+               :L.sort((a,b)=>String(b.raised_date).localeCompare(String(a.raised_date))||(b.ref_no-a.ref_no))}
+const regStarted=day=>Object.values(reg.d).some(x=>x.start_date===day)||Object.values(reg.v).some(x=>x.raised_date===day);
+const regDay=(k,day)=>regSorted(k).filter(x=>(k==="d"?x.start_date:x.raised_date)===day).reverse();
+/* Ongoing on a day: started on or before it, and not resolved before it. For today that is every delay still marked Ongoing. */
+const regOngoing=day=>regSorted("d").filter(x=>x.start_date<=day&&(x.status==="Ongoing"||(x.resolved_date&&x.resolved_date>day))).reverse();
+function regRow(k,x,uid){const now=new Date().toISOString(),ph=(x.photos||[]).map(p=>({id:p.id,path:p.path,caption:p.caption||"",time:p.time||""}));
+  if(k==="d")return {id:x.id,owner_id:uid,start_date:x.start_date,start_time:x.start_time||"",description:x.description||"",area:x.area||"",cause:x.cause||"",status:x.status,
+    resolved_date:x.status==="Resolved"&&x.resolved_date?x.resolved_date:null,resolved_time:x.status==="Resolved"?(x.resolved_time||""):"",hours_manual:numOrNull(x.hours_manual),hours_lost:delayHours(x),
+    crane_affected:!!x.crane_affected,notes:x.notes||"",photos:ph,updated_at:now};
+  return {id:x.id,owner_id:uid,raised_date:x.raised_date,description:x.description||"",area:x.area||"",status:x.status,
+    decided_date:(x.status==="Approved"||x.status==="Rejected")&&x.decided_date?x.decided_date:null,reference:x.reference||"",notes:x.notes||"",photos:ph,updated_at:now}}
+function fromRow(k,r){const x={...r,_synced:true};["owner_id","legacy_key","created_at","updated_at"].forEach(f=>delete x[f]);
+  x.photos=Array.isArray(r.photos)?r.photos:[];if(k==="d"){x.hours_manual=numOrNull(r.hours_manual);x.resolved_date=r.resolved_date||"";}else x.decided_date=r.decided_date||"";return x}
+function markReg(k,id){outbox.reg[k+":"+id]=tick();saveOutbox()}
+async function flushReg(u){
+  for(const key of Object.keys(outbox.reg)){const ts=outbox.reg[key],k=key[0],id=key.slice(2),x=reg[k][id],tbl=REG_TBL[k];
+    if(x){const row=regRow(k,x,u.id);
+      if(!x._synced){let r=await sb.from(tbl).insert(row).select("ref_no").single();
+        if(r.error&&r.error.code==="23505")r=await sb.from(tbl).update(row).eq("id",id).select("ref_no").single();
+        if(r.error)throw r.error;x.ref_no=r.data.ref_no;x._synced=true;regCtr[k]=Math.max(regCtr[k],x.ref_no)}
+      else{const r=await sb.from(tbl).update(row).eq("id",id).select("ref_no");if(r.error)throw r.error;
+        if(!(r.data||[]).length)delete reg[k][id]}
+      saveReg()}
+    if(outbox.reg[key]===ts){delete outbox.reg[key];saveOutbox()}}
+  for(const it of outbox.regDel.slice()){const {error}=await sb.from(REG_TBL[it.k]).delete().eq("id",it.id);if(error)throw error;
+    outbox.regDel=outbox.regDel.filter(z=>z!==it);saveOutbox()}
+}
+async function pullReg(){
+  const [a,b]=await Promise.all([sb.from("delays").select("*"),sb.from("variations").select("*")]);
+  if(a.error||b.error)throw a.error||b.error;
+  const merge=(k,rows)=>{const seen=new Set(),gone=new Set(outbox.regDel.filter(z=>z.k===k).map(z=>z.id));
+    rows.forEach(r=>{seen.add(r.id);if(outbox.reg[k+":"+r.id]||gone.has(r.id))return;reg[k][r.id]=fromRow(k,r)});
+    Object.keys(reg[k]).forEach(id=>{const x=reg[k][id];if(x._synced&&!seen.has(id)&&!outbox.reg[k+":"+id])delete reg[k][id]});
+    regCtr[k]=Math.max(regCtr[k],maxRef(k))};
+  merge("d",a.data||[]);merge("v",b.data||[]);saveReg();
+}
+function commitReg(k,x){reg[k][x.id]=x;saveReg();markReg(k,x.id);status("Saving",true);soon(0)}
+function newDelay(day,extra){const t=day===iso(new Date())?nowT():"";return {id:uuid(),ref_no:nextRef("d"),_synced:false,start_date:day,start_time:t,description:"",area:"",cause:"",status:"Ongoing",resolved_date:"",resolved_time:"",hours_manual:null,crane_affected:false,notes:"",photos:[],...(extra||{})}}
+function newVariation(day){return {id:uuid(),ref_no:nextRef("v"),_synced:false,raised_date:day,description:"",area:"",status:"Raised",decided_date:"",reference:"",notes:"",photos:[]}}
+
+/* --- list rows --- */
+function regRowHTML(k,x,compact){
+  const meta=k==="d"?[x.area,x.cause,fmtHrs(delayHours(x)),x.crane_affected?"crane affected":"",(x.photos||[]).length?`${x.photos.length} photo${x.photos.length>1?"s":""}`:""]
+                   :[x.area,x.reference?`Ref ${x.reference}`:"",(x.photos||[]).length?`${x.photos.length} photo${x.photos.length>1?"s":""}`:""];
+  const when=k==="d"?`${compact?"":shortDay(x.start_date)+" "}${x.start_time||""}`:(compact?"":shortDay(x.raised_date));
+  return `<button type="button" class="reg-row${compact?" c":""}" data-reg="${k}:${esc(x.id)}"><span class="t"><b>${esc(refLabel(k,x))}</b><span>${esc(when.trim())}</span><span class="pill ${statusPill(x.status)}">${esc(x.status)}</span></span>
+    <span class="ds">${esc(x.description||"(no description)")}</span>${meta.filter(Boolean).length?`<small>${esc(meta.filter(Boolean).join(" · "))}</small>`:""}</button>`}
+function wireRegRows(root){root.querySelectorAll("[data-reg]").forEach(b=>b.onclick=()=>{const [k,id]=[b.dataset.reg[0],b.dataset.reg.slice(2)];openReg(k,id)});
+  root.querySelectorAll("[data-newreg]").forEach(b=>b.onclick=()=>openReg(b.dataset.newreg,null,cur))}
+function regDayCard(k,day){const L=regDay(k,day);return `<div class="reg-list">${L.map(x=>regRowHTML(k,x,true)).join("")||`<div class="empty">No ${k==="d"?"delays":"variations"} started this day.</div>`}</div>`}
+function regOngoingCard(day){const L=regOngoing(day);return `<div class="reg-list">${L.map(x=>regRowHTML("d",x,false)).join("")||'<div class="empty">No ongoing delays.</div>'}</div>`}
+const regLineD=x=>`${refLabel("d",x)} ${x.start_time||""} ${x.description||""} [${[x.status,fmtHrs(delayHours(x)),x.cause,x.area,x.crane_affected?"crane affected":""].filter(Boolean).join(", ")}]`.replace(/\s+/g," ").trim();
+const regLineV=x=>`${refLabel("v",x)} ${x.description||""} [${[x.status,x.reference?"Ref "+x.reference:"",x.area].filter(Boolean).join(", ")}]`.replace(/\s+/g," ").trim();
+const regLineOngoing=x=>`${refLabel("d",x)} since ${shortDay(x.start_date)}${x.start_time?" "+x.start_time:""} ${x.description||""}${x.cause?" ["+x.cause+"]":""}`.replace(/\s+/g," ").trim();
+
+/* --- registers screen --- */
+function renderRegisters(){
+  const r2=document.querySelector(".top .r2");if(r2)r2.hidden=true;if($("#bar"))$("#bar").hidden=true;$("#regBtn").classList.add("cur");
+  const k=regTab,sts=k==="d"?DELAY_STATUS:VAR_STATUS;
+  $("#app").innerHTML=`<div class="status"><span class="dot" id="dot"></span><span id="statusTxt"></span><button class="btn" id="regBack" type="button" style="margin-left:auto;min-height:40px">&lsaquo; Back to diary</button></div>
+    <h1 class="regh">Registers</h1>
+    <div class="seg" role="tablist"><button type="button" data-tab="d" aria-pressed="${k==="d"}">Delays (${Object.keys(reg.d).length})</button><button type="button" data-tab="v" aria-pressed="${k==="v"}">Variations (${Object.keys(reg.v).length})</button></div>
+    <input type="search" id="regQ" placeholder="Search ${k==="d"?"delays":"variations"}" value="${esc(regQuery)}" aria-label="Search" autocomplete="off">
+    <div class="chips" id="regSt">${["All",...sts].map(s=>`<button type="button" class="chip" data-st="${esc(s)}" aria-pressed="${regFilter[k]===s}">${esc(s)}</button>`).join("")}</div>
+    <button class="btn primary" id="regNew" type="button" style="min-height:50px">+ New ${k==="d"?"delay":"variation"}</button>
+    <div class="reg-list" id="regL"></div>`;
+  $("#regBack").onclick=()=>{view="home";$("#regBtn").classList.remove("cur");const r=document.querySelector(".top .r2");if(r)r.hidden=false;render();scrollTo(0,0)};
+  $("#app").querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{regTab=b.dataset.tab;regQuery="";renderRegisters()});
+  $("#app").querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{regFilter[k]=b.dataset.st;$("#app").querySelectorAll("[data-st]").forEach(y=>y.setAttribute("aria-pressed",y===b));drawRegList()});
+  $("#regQ").oninput=e=>{regQuery=e.target.value;drawRegList()};
+  $("#regNew").onclick=()=>openReg(k,null,iso(new Date()));
+  drawRegList();status(...(status.last||["Loading"]));
+}
+function drawRegList(){const k=regTab,q=regQuery.trim().toLowerCase(),f=regFilter[k],box=$("#regL");if(!box)return;
+  const L=regSorted(k).filter(x=>(f==="All"||x.status===f)&&(!q||[refLabel(k,x),x.description,x.area,x.cause,x.notes,x.reference,x.status,...(x.photos||[]).map(p=>p.caption)].join(" ").toLowerCase().includes(q)));
+  box.innerHTML=L.map(x=>regRowHTML(k,x,false)).join("")||`<div class="empty">${Object.keys(reg[k]).length?"Nothing matches.":`No ${k==="d"?"delays":"variations"} yet.`}</div>`;
+  wireRegRows(box)}
+
+/* --- add / edit one item --- */
+function openReg(k,id,day){
+  const old=id&&reg[k][id];if(id&&!old){toast("That item was deleted");return}
+  const w=old?clone(old):(k==="d"?newDelay(day||cur):newVariation(day||cur));
+  const added=[],removed=[];let saved=false;const NEW="__new__";
+  const opt=(list,val,ph)=>`<option value="">${ph}</option>${list.map(a=>`<option${a===val?" selected":""}>${esc(a)}</option>`).join("")}${val&&!list.includes(val)?`<option selected>${esc(val)}</option>`:""}<option value="${NEW}">+ New…</option>`;
+  const segs=(list,val,id2)=>`<div class="seg" id="${id2}">${list.map(s=>`<button type="button" data-v="${esc(s)}" aria-pressed="${s===val}">${esc(s)}</button>`).join("")}</div>`;
+  const body=k==="d"?`
+    <div class="row"><label>Started<input type="date" id="eSd" value="${esc(w.start_date)}"></label><label>Time<input type="time" id="eSt" value="${esc(w.start_time)}"></label></div>
+    <label>Description<textarea id="eDs" rows="3" placeholder="What happened">${esc(w.description)}</textarea></label>
+    <label>Working area<select id="eAr">${opt(areasList,w.area,"No area")}</select></label><input type="text" id="eArN" placeholder="New area name (saved to your list)" hidden>
+    <label>Cause<select id="eCa">${opt(causes,w.cause,"Choose a cause")}</select></label><input type="text" id="eCaN" placeholder="New cause (saved to your list)" hidden>
+    <div><div class="lbl">Status</div>${segs(DELAY_STATUS,w.status,"eStS")}</div>
+    <div class="row" id="eRes"><label>Resolved<input type="date" id="eRd" value="${esc(w.resolved_date||"")}"></label><label>Time<input type="time" id="eRt" value="${esc(w.resolved_time||"")}"></label></div>
+    <label>Hours lost<input type="number" id="eHr" step="0.25" min="0" inputmode="decimal" value="${w.hours_manual==null?"":esc(w.hours_manual)}"></label><div class="empty" id="eHc" style="margin-top:-6px;font-size:13px"></div>
+    <label class="chk"><input type="checkbox" id="eCr" ${w.crane_affected?"checked":""}>Crane affected</label>
+    <label>Notes<textarea id="eNo" rows="2">${esc(w.notes)}</textarea></label>`:`
+    <label>Date raised<input type="date" id="eRa" value="${esc(w.raised_date)}"></label>
+    <label>Description<textarea id="eDs" rows="3" placeholder="What the variation is">${esc(w.description)}</textarea></label>
+    <label>Working area<select id="eAr">${opt(areasList,w.area,"No area")}</select></label><input type="text" id="eArN" placeholder="New area name (saved to your list)" hidden>
+    <div><div class="lbl">Status</div>${segs(VAR_STATUS,w.status,"eStS")}</div>
+    <label id="eDecL">Date decided<input type="date" id="eDec" value="${esc(w.decided_date||"")}"></label>
+    <label>Instruction or reference number (optional)<input type="text" id="eRf" value="${esc(w.reference)}" placeholder="e.g. SI-014"></label>
+    <label>Notes<textarea id="eNo" rows="2">${esc(w.notes)}</textarea></label>`;
+  const title=`${old?"":"New "}${k==="d"?"delay":"variation"} ${refLabel(k,w)}`;
+  sheet(title,body+`<div><div class="lbl">Photos</div><div class="photos" id="ePh"></div>
+      <div class="btns" style="margin-top:8px"><label class="btn" style="flex-direction:row;align-items:center;color:var(--ink)">Take photo<input type="file" accept="image/*" capture="environment" id="eFc" hidden></label>
+      <label class="btn" style="flex-direction:row;align-items:center;color:var(--ink)">From gallery<input type="file" accept="image/*" id="eFg" hidden multiple></label></div></div>
+    ${old?`<button type="button" class="btn" id="eDel" style="color:var(--crit);border-color:var(--crit);align-self:flex-start">Delete ${esc(refLabel(k,w))}</button>`:""}`,"Save",b=>{
+    const g=s=>b.querySelector(s);
+    w.description=g("#eDs").value.trim();if(!w.description){toast("Write a description first");return false}
+    let area=g("#eAr").value;if(area===NEW){area=g("#eArN").value.trim();if(area&&!areasList.some(a=>a.toLowerCase()===area.toLowerCase())){areasList=[...areasList,area];saveAreas()}}
+    w.area=area||"";w.notes=g("#eNo").value.trim();
+    if(k==="d"){
+      w.start_date=g("#eSd").value||w.start_date;w.start_time=g("#eSt").value||"";
+      let ca=g("#eCa").value;if(ca===NEW){ca=g("#eCaN").value.trim();if(ca&&!causes.some(c=>c.toLowerCase()===ca.toLowerCase())){causes=[...causes,ca];saveReg();markSetting("causes")}}
+      w.cause=ca||"";w.resolved_date=w.status==="Resolved"?g("#eRd").value:"";w.resolved_time=w.status==="Resolved"?g("#eRt").value:"";
+      if(w.status==="Resolved"&&!w.resolved_date){toast("Add the date it was resolved");return false}
+      w.hours_manual=numOrNull(g("#eHr").value);w.crane_affected=g("#eCr").checked;
+    }else{
+      w.raised_date=g("#eRa").value||w.raised_date;w.decided_date=(w.status==="Approved"||w.status==="Rejected")?g("#eDec").value:"";w.reference=g("#eRf").value.trim();
+    }
+    (w.photos||[]).forEach(p=>{const t=b.querySelector(`[data-epc="${p.id}"]`);if(t)p.caption=t.value.trim()});
+    added.forEach(pid=>{if(w.photos.some(p=>p.id===pid)&&!outbox.uploads.includes(pid))outbox.uploads.push(pid)});
+    removed.forEach(p=>{outbox.uploads=outbox.uploads.filter(z=>z!==p.id);if(old&&(old.photos||[]).some(o=>o.id===p.id)&&p.path)outbox.removes.push(p.path);idb.del(p.id)});
+    saveOutbox();saved=true;commitReg(k,w);render();toast(`${refLabel(k,w)} saved`);
+  },b=>{
+    const g=s=>b.querySelector(s),u=storedUser();
+    const dlg=$("#dlg");const onClose=()=>{dlg.removeEventListener("close",onClose);if(!saved)added.forEach(pid=>idb.del(pid))};dlg.addEventListener("close",onClose);
+    g("#eAr").onchange=e=>{g("#eArN").hidden=e.target.value!==NEW;if(e.target.value===NEW)g("#eArN").focus()};
+    if(g("#eCa"))g("#eCa").onchange=e=>{g("#eCaN").hidden=e.target.value!==NEW;if(e.target.value===NEW)g("#eCaN").focus()};
+    const showSt=()=>{if(k==="d"){g("#eRes").hidden=w.status!=="Resolved";hrsHint()}else g("#eDecL").hidden=!(w.status==="Approved"||w.status==="Rejected")};
+    const hrsHint=()=>{if(k!=="d")return;const tmp={...w,start_date:g("#eSd").value,start_time:g("#eSt").value,resolved_date:g("#eRd").value,resolved_time:g("#eRt").value},c=calcHours(tmp);
+      g("#eHr").placeholder=c==null?"":String(c);
+      g("#eHc").textContent=w.status!=="Resolved"?"Hours are worked out when the delay is resolved. You can type them in yourself.":c==null?"Add the start and resolved times to work out the hours, or type them in.":`Worked out from start to resolved: ${fmtHrs(c)}. Type a number to override.`};
+    b.querySelectorAll("#eStS button").forEach(x=>x.onclick=()=>{w.status=x.dataset.v;b.querySelectorAll("#eStS button").forEach(y=>y.setAttribute("aria-pressed",y===x));
+      if(k==="d"&&w.status==="Resolved"&&!g("#eRd").value){g("#eRd").value=iso(new Date());g("#eRt").value=nowT()}
+      if(k==="v"&&(w.status==="Approved"||w.status==="Rejected")&&!g("#eDec").value)g("#eDec").value=iso(new Date());
+      showSt()});
+    ["#eSd","#eSt","#eRd","#eRt"].forEach(s=>{if(g(s))g(s).oninput=hrsHint});
+    showSt();
+    const drawPh=()=>{const box=g("#ePh");
+      box.innerHTML=(w.photos||[]).map(p=>`<div class="photo"><img data-epi="${esc(p.id)}" alt="${esc(p.caption||"Photo")}"><textarea data-epc="${esc(p.id)}" rows="2" placeholder="Add a description">${esc(p.caption||"")}</textarea><button type="button" data-epr="${esc(p.id)}">Remove</button></div>`).join("")||'<div class="empty">No photos yet.</div>';
+      box.querySelectorAll("[data-epi]").forEach(im=>{const p=w.photos.find(z=>z.id===im.dataset.epi);photoURL(p).then(x=>{im.src=x}).catch(()=>{im.alt="Photo not on this phone yet"});
+        im.onclick=()=>{if(im.src)window.open(im.src,"_blank")}});
+      box.querySelectorAll("[data-epc]").forEach(t=>t.oninput=()=>{const p=w.photos.find(z=>z.id===t.dataset.epc);if(p)p.caption=t.value});
+      box.querySelectorAll("[data-epr]").forEach(x=>x.onclick=()=>{if(!confirm("Remove this photo?"))return;const i=w.photos.findIndex(z=>z.id===x.dataset.epr);if(i<0)return;removed.push(w.photos.splice(i,1)[0]);drawPh()})};
+    const addFiles=async files=>{if(!u){toast("Log in first");return}
+      for(const f of files){try{const blob=await shrink(f),pid=uuid();await idb.set(pid,blob);added.push(pid);
+        w.photos.push({id:pid,path:`${u.id}/reg/${w.id}/${pid}.jpg`,caption:"",time:nowT()})}catch(e){toast("Could not read that photo")}}
+      drawPh()};
+    g("#eFc").onchange=e=>{addFiles([...e.target.files]);e.target.value=""};g("#eFg").onchange=e=>{addFiles([...e.target.files]);e.target.value=""};
+    drawPh();
+    if(g("#eDel"))g("#eDel").onclick=()=>{
+      if(!confirm(`Delete ${refLabel(k,w)}? This can't be undone, and the number ${refLabel(k,w)} won't be used again.`))return;
+      const x=reg[k][w.id];delete reg[k][w.id];delete outbox.reg[k+":"+w.id];
+      if(x&&x._synced)outbox.regDel.push({k,id:w.id});
+      [...(x?x.photos||[]:[]),...w.photos].forEach(p=>{outbox.uploads=outbox.uploads.filter(z=>z!==p.id);if(p.path&&x&&x._synced)outbox.removes.push(p.path);idb.del(p.id)});
+      saved=true;saveReg();saveOutbox();status("Saving",true);soon(0);$("#dlg").close();render();toast(`${refLabel(k,w)} deleted`)};
+    if(!old)setTimeout(()=>{try{g("#eDs").focus()}catch(e){}},50);
+  });
+}
+
 /* ---------- completed day: read-only preview laid out like the PDF ---------- */
 function previewHTML(d,id){
   const v=t=>{t=String(t==null?"":t).trim();return t?esc(t):'<span class="rp-e">-</span>'};
@@ -693,9 +907,11 @@ function previewHTML(d,id){
     <div class="rp-two">${box("Crane activity",(cr.length?"Hours: "+cr.join(", "):"")+(d.craneNote?(cr.length?"\n":"")+d.craneNote:""))}${box("Concrete pour",d.pour)}</div>
     ${sec("Deliveries",dels)}
     ${box("Site activity",d.activity)}
-    <div class="rp-two">${box("Deck and verticals handover",d.handover)}${box("Variations",d.variations)}</div>
-    ${box("Delays",d.delays)}
-    <div class="rp-two">${box("Ongoing delays",d.ongoing)}${box("Accidents / injuries",d.accidents)}</div>
+    ${box("Deck and verticals handover",d.handover)}
+    ${sec("Delays",`<div class="reg-list">${regDay("d",id).map(x=>regRowHTML("d",x,true)).join("")||'<span class="rp-e">-</span>'}</div>`)}
+    ${sec("Ongoing delays",`<div class="reg-list">${regOngoing(id).map(x=>regRowHTML("d",x,false)).join("")||'<span class="rp-e">-</span>'}</div>`)}
+    ${sec("Variations",`<div class="reg-list">${regDay("v",id).map(x=>regRowHTML("v",x,true)).join("")||'<span class="rp-e">-</span>'}</div>`)}
+    ${box("Accidents / injuries",d.accidents)}
     ${photos}
     <div class="rp-ft">Daily Site Diary | ${esc(d.builder)} | ${esc(d.project)} | ${esc(nice(id))}</div>
   </article>`;
@@ -711,6 +927,7 @@ function renderPreview(d){
   $("#reopenBtn").onclick=()=>{d.completed=false;queueSave();render();scrollTo(0,0);toast("Day reopened")};
   $("#pdfDay").onclick=()=>{exFrom=cur;exTo="";exFresh=true;exM=cur.slice(0,7);exportSheet()};
   $("#app").querySelectorAll("[data-pv]").forEach(im=>im.onclick=()=>{const p=d.photos[im.dataset.pv];if(!im.src)return;sheet("",`<img class="pv" src="${esc(im.src)}" alt=""><div>${esc(p.caption)}</div>`,null)});
+  wireRegRows($("#app"));
   fillPhotos($("#app"));
   status(...(status.last||["Loading"]));
 }
@@ -721,7 +938,7 @@ function renderDetails(){
   $("#app").innerHTML=`
   <div class="status"><span class="dot" id="dot"></span><span id="statusTxt"></span>${d.completed?'<span class="pill low" style="margin-left:auto">Completed</span>':hasContent(d)?'<span class="pill med" style="margin-left:auto">In progress</span>':""}</div>
   ${d.completed?`<div class="card" style="flex-direction:row;align-items:center;justify-content:space-between;gap:12px;border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surface))"><div><strong style="color:var(--ok)">This day is completed</strong><div style="font-size:13px;color:var(--muted)">Locked. Reopen the day to make changes.</div></div><button class="btn" id="reopenBtn" type="button" style="flex:none">Reopen day</button></div>`:""}
-  ${(()=>{const pv=prevDiaryDay(cur);if(!pv||sameAsPrev(d,pv))return"";const fresh=!hasContent(d);return `<section class="card" style="flex-direction:row;align-items:center;justify-content:space-between;gap:12px"><div><strong>${fresh?"Start from":"Copy from"} ${esc(shortDay(pv))}?</strong><div style="font-size:13px;color:var(--muted)">${fresh?"Copies":"Replaces today's"} crew numbers, working areas, risks of the day, hours and ongoing delays.</div></div><button class="btn primary" id="copyPrev" type="button" data-prev="${pv}" style="flex:none">Copy</button></section>`})()}
+  ${(()=>{const pv=prevDiaryDay(cur);if(!pv||sameAsPrev(d,pv))return"";const fresh=!hasContent(d);return `<section class="card" style="flex-direction:row;align-items:center;justify-content:space-between;gap:12px"><div><strong>${fresh?"Start from":"Copy from"} ${esc(shortDay(pv))}?</strong><div style="font-size:13px;color:var(--muted)">${fresh?"Copies":"Replaces today's"} crew numbers, working areas, risks of the day and hours. Ongoing delays carry over by themselves.</div></div><button class="btn primary" id="copyPrev" type="button" data-prev="${pv}" style="flex:none">Copy</button></section>`})()}
   <section class="card"><h2>Project</h2>
     <div class="row"><label style="grid-column:1/-1;flex:1 1 100%">Builder<span style="display:flex;align-items:center;gap:8px"><img src="${HLOGO}" alt="" style="height:26px;width:auto;flex:none"><input type="text" data-f="builder" style="min-width:0;flex:1"></span></label></div>
     <div class="row"><label style="grid-column:1/-1;flex:1 1 100%">Project<input type="text" data-f="project"></label></div>
@@ -737,13 +954,13 @@ function renderDetails(){
   <section class="card"><h2>Deliveries</h2>${deliveryList()}<button class="ghost" data-add="delivery">+ Add delivery</button></section>
   <section class="card"><h2>Site activity</h2>${listHTML("activity")}</section>
   <section class="card"><h2>Deck and verticals handover</h2>${listHTML("handover")}</section>
-  <section class="card"><h2>Variations</h2>${listHTML("variations")}</section>
-  <section class="card"><h2>Delays</h2>${listHTML("delays")}</section>
-  <section class="card"><h2>Ongoing delays</h2>${listHTML("ongoing")}</section>
+  <section class="card"><h2>Variations</h2>${regDayCard("v",cur)}<button class="ghost" type="button" data-newreg="v">+ Add variation</button></section>
+  <section class="card"><h2>Delays</h2>${regDayCard("d",cur)}<button class="ghost" type="button" data-newreg="d">+ Add delay</button></section>
+  <section class="card"><h2>Ongoing delays</h2>${regOngoingCard(cur)}</section>
   <section class="card"><h2>Accidents and injuries</h2>${listHTML("accidents")}</section>
   <section class="card"><h2>Photos</h2>${photoGrid()}<button class="ghost" data-add="photo">+ Add photo</button></section>
   <button class="btn ${d.completed?"":"primary"}" id="doneBtn" style="min-height:54px;font-size:17px;${d.completed?"border-color:var(--ok);color:var(--ok)":""}">${d.completed?"Completed. Tap to reopen this day":"Complete this day"}</button>`;
-  bindFields($("#app"));wireLists($("#app"));wireListsTyped($("#app"));wireCrew($("#app"));drawAreas($("#app"));
+  bindFields($("#app"));wireLists($("#app"));wireListsTyped($("#app"));wireRegRows($("#app"));wireCrew($("#app"));drawAreas($("#app"));
   if($("#copyPrev"))$("#copyPrev").onclick=()=>copyFrom($("#copyPrev").dataset.prev);
   drawWxInfo();autoWeather(cur);
   wireCrane($("#app"));
@@ -760,6 +977,7 @@ function renderDetails(){
 function flushTyped(){document.querySelectorAll("#app [data-li]").forEach(i=>{const t=i.value.trim(),k=i.dataset.day,f=i.dataset.li,x=days[k];
   if(t&&x){x[f]=[...items(x[f]),t.replace(/\s*\n\s*/g," ")].join("\n");i.value="";markDay(k);saveLocal();soon()}})}
 function render(){flushTyped();
+  if(view==="reg"){renderRegisters();return}
   $("#date").textContent=new Date(cur+"T12:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
   renderDetails();
 }
@@ -789,10 +1007,14 @@ function addFlow(kind){if(day().completed){toast("This day is completed. Reopen 
 
 function appendLine(field,text){const d=day();d[field]=(d[field]?d[field].replace(/\s+$/,"")+"\n":"")+text}
 function delayFlow(){
-  sheet("Log a delay",`<label>What happened<input type="text" id="dt" placeholder="Example: Waiting on crane, 40 min"></label>
-    <label>Hours lost (optional)<input type="number" id="dh" step="0.25" min="0" inputmode="decimal"></label>`,"Add delay",b=>{
+  sheet("Log a delay",`<label>What happened<input type="text" id="dt" placeholder="Example: Waiting on crane"></label>
+    <label>Cause (optional)<select id="dc"><option value="">No cause</option>${causes.map(c=>`<option>${esc(c)}</option>`).join("")}</select></label>
+    <label>Hours lost (optional)<input type="number" id="dh" step="0.25" min="0" inputmode="decimal"></label>
+    <div class="empty" style="font-size:13px">Saved to the Delay register. With hours lost it's marked Resolved, otherwise Ongoing.</div>`,"Add delay",b=>{
     const t=b.querySelector("#dt").value.trim();if(!t){toast("Write what happened first");return false}
-    const h=b.querySelector("#dh").value;appendLine("delays",`${nowT()} - ${t}${h?` (${h} h lost)`:""}`);queueSave();render();
+    const h=numOrNull(b.querySelector("#dh").value),x=newDelay(cur,{start_time:nowT(),description:t,cause:b.querySelector("#dc").value});
+    if(h!=null){x.status="Resolved";x.resolved_date=iso(new Date());x.resolved_time=nowT();x.hours_manual=h}
+    commitReg("d",x);render();toast(`${refLabel("d",x)} added`);
   });
 }
 const halfNow=()=>{const n=new Date();return String(n.getHours()).padStart(2,"0")+":"+(n.getMinutes()<30?"00":"30")};
@@ -972,7 +1194,7 @@ function asText(id){
   L.push("","CRANE ACTIVITY",`  Hours: ${craneRanges(d).join(", ")||"-"}`);if(d.craneNote)L.push(`  Notes: ${d.craneNote}`);
   L.push("",`CONCRETE POUR: ${d.pour||"-"}`,"","DELIVERIES");
   if(d.deliveries.length)d.deliveries.forEach(r=>L.push(`  ${r.dir||"Delivery"}: ${r.type||""}  (${r.arrive||"--:--"} to ${r.depart||"--:--"})`));else L.push("  -");
-  L.push("",`SITE ACTIVITY: ${d.activity||"-"}`,`DECK AND VERTICALS HANDOVER: ${d.handover||"-"}`,`VARIATIONS: ${d.variations||"-"}`,`DELAYS: ${d.delays||"-"}`,`ONGOING DELAYS: ${d.ongoing||"-"}`,`ACCIDENTS / INJURIES: ${d.accidents||"-"}`);
+  L.push("",`SITE ACTIVITY: ${d.activity||"-"}`,`DECK AND VERTICALS HANDOVER: ${d.handover||"-"}`,`VARIATIONS: ${regDay("v",id).map(regLineV).join("; ")||"-"}`,`DELAYS: ${regDay("d",id).map(regLineD).join("; ")||"-"}`,`ONGOING DELAYS: ${regOngoing(id).map(regLineOngoing).join("; ")||"-"}`,`ACCIDENTS / INJURIES: ${d.accidents||"-"}`);
   if(d.photos.length){L.push("","PHOTOS");d.photos.forEach((p,i)=>L.push(`  ${i+1}. ${p.caption||"(no caption)"}`))}
   return L.join("\n");
 }
@@ -1078,9 +1300,10 @@ async function buildPDFNew(ids){
       else{font("normal",9.5);col([150,150,150]);doc.text("No deliveries.",M+2,y+4);y+=8}
       y+=4}
     textBox("Site activity",d.activity);
-    two("Deck and verticals handover",d.handover,"Variations",d.variations);
-    textBox("Delays",d.delays);
-    two("Ongoing delays",d.ongoing,"Accidents / injuries",d.accidents);
+    two("Deck and verticals handover",d.handover,"Accidents / injuries",d.accidents);
+    textBox("Delays",regDay("d",did).map(regLineD).join("\n"));
+    textBox("Ongoing delays",regOngoing(did).map(regLineOngoing).join("\n"));
+    textBox("Variations",regDay("v",did).map(regLineV).join("\n"));
     // photos
     if(d.photos.length){
       newPage();header();title("Photos",nice(did)+"   |   "+(d.project||""));
@@ -1212,6 +1435,7 @@ function exportSheet(msgText){
     };
   });
 }
+$("#regBtn").onclick=()=>{if(view==="reg"){$("#regBack")&&$("#regBack").click();return}view="reg";render();scrollTo(0,0)};
 $("#pdfBtn").onclick=()=>{exFrom=cur;exTo="";exFresh=true;exM=cur.slice(0,7);exportSheet()};
 
 /* ---------- log in / log out ---------- */
@@ -1248,8 +1472,8 @@ async function logout(){
   wipeLocal();showLogin(true);
 }
 function wipeLocal(){
-  [LS,LSR,LSD,LSA,LSQ,"siteDiary.proj",AUTH_KEY].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
-  idb.clear();outbox={days:{},settings:{},uploads:[],removes:[]};days={};loadLocal();render();
+  [LS,LSR,LSD,LSA,LSQ,LSRG,LSCA,LSRC,"siteDiary.proj",AUTH_KEY].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  idb.clear();outbox={days:{},settings:{},uploads:[],removes:[],reg:{},regDel:[]};days={};loadLocal();loadReg();view="home";render();
 }
 
 /* ---------- no zoom (iPhone ignores the viewport setting, so block the gestures) ---------- */
@@ -1266,7 +1490,7 @@ function wipeLocal(){
 document.addEventListener("focusout",()=>{setTimeout(()=>{if(window.scrollX)window.scrollTo(0,window.scrollY)},50)});
 
 /* ---------- start ---------- */
-loadLocal();loadOutbox();
+loadLocal();loadOutbox();loadReg();
 /* Always open on today. Drop an old date left in the address from earlier versions. */
 if(/^#\d{4}-\d{2}-\d{2}$/.test(location.hash)){try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}}
 cur=iso(new Date());

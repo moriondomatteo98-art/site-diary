@@ -14,7 +14,7 @@ Status: ✅ done · 🔜 to do · ❌ dropped
 - ✅ **Delay and Variation registers** – own screen, D-01 / V-01 numbers, statuses, causes, hours lost, photos, search and filter *(v14)*
 
 ## Useful for reporting
-5. 🔜 **Delay and variation reports** (from the registers) and **weekly / monthly summary** – one page with total man-days per trade, delay hours, pours and deliveries for the period.
+5. ✅ **Reports** – weekly progress, delay register, variations register, manpower and crane, pour and handover calendar *(v15)* – one page with total man-days per trade, delay hours, pours and deliveries for the period.
 6. 🔜 **Search** – find every day that mentions a word (e.g. "pump", "TC1").
 7. 🔜 **Photo markup** – draw arrows or circles on a photo before saving it.
 8. 🔜 **Signature on completion** – sign with your finger when completing a day; printed on the PDF.
@@ -25,4 +25,6 @@ Status: ✅ done · 🔜 to do · ❌ dropped
 11. 🔜 **Sharing with a colleague** – let a second person (e.g. a foreman) fill in the diary.
 
 ## Other ideas
+- 🔜 **Planned pours and handovers** – a list of planned dates, shown as outlined "Planned" blocks on the calendar report.
+- 🔜 **Photo tags** – choose a tag (and area) for each day photo instead of the automatic "Site activity".
 - 🔜 **Restore from backup** – load a backup file back into the diary.

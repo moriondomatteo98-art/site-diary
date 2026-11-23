@@ -189,7 +189,14 @@ body.auth #bar,body.auth #app{display:none}
 .acct span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .photo img:not([src]){background:var(--line)}
 /* Registers */
-@media (max-width:440px){.top .tag{display:none}.top #regBtn{margin-left:auto}}
+@media (max-width:560px){.top .tag{display:none}.top #regBtn{margin-left:auto}}
+@media (max-width:440px){.top .r1{gap:6px}.top .r1 button{padding:0 10px;font-size:14px}#logo{height:27px}}
+@media (max-width:380px){.top .r1 button{padding:0 8px;font-size:13px}#logo{height:23px}}
+.rp-pick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+label.rp-ph{position:relative;display:block;border-radius:6px;overflow:hidden;background:var(--line);cursor:pointer;gap:0}
+.rp-ph img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--line)}
+.rp-ph input{position:absolute;top:4px;left:4px;width:22px;height:22px;margin:0;min-height:0}
+.rp-ph span{display:block;font-size:11px;padding:2px 4px;color:var(--ink);background:var(--surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top button#regBtn.cur{background:#0b0b0b;color:#fff}
 .regh{font:700 26px var(--display)}.regh::after{content:".";color:var(--brand)}
 .seg{display:flex;gap:6px;flex-wrap:wrap}
@@ -253,6 +260,7 @@ body.auth #bar,body.auth #app{display:none}
   <div class="r1">
     <img id="logo" alt="Transform Group" width="154" height="32"><span class="tag">Site diary</span>
     <button id="regBtn" type="button">Registers</button>
+    <button id="rptBtn" type="button">Reports</button>
     <button id="pdfBtn" class="on">PDF</button>
   </div>
   <div class="r2">
@@ -356,7 +364,7 @@ const PROJ_KEYS=["builder","project","address"];
 function applyProj(){Object.values(days).forEach(x=>{if(x&&typeof x==="object")PROJ_KEYS.forEach(k=>{x[k]=DEFAULTS[k]})})}
 function setProj(v){if(v&&typeof v==="object")PROJ_KEYS.forEach(k=>{if(typeof v[k]==="string")DEFAULTS[k]=v[k]})}
 /* Supabase connection. The publishable (anon) key is safe in the browser: Row Level Security only lets the owner's account read or write. */
-const APP_VERSION="v14";
+const APP_VERSION="v15";
 const SB_URL="https://atvukmvzjnyyvblrjorx.supabase.co";
 const SB_KEY="sb_publishable_7qcokDz_vp1NiFugeHNfxQ_ancigAFg";
 const AUTH_KEY="siteDiary.auth";
@@ -1393,6 +1401,388 @@ function offerFile(mm,blob,fn,type,what){
   if(!canShare&&!/iPhone|iPad|iPod/.test(navigator.userAgent)){try{mm.querySelector("#pdfOpen").click()}catch(e){}}
 }
 const offerPdf=(mm,blob,fn)=>offerFile(mm,blob,fn,"application/pdf","PDF");
+/* ================= REPORTS (read-only: never changes a day or register item) ================= */
+const RPT={
+  weekly:{name:"Weekly Progress Report",short:"Weekly progress report",desc:"Days at a glance, activities, pours, deliveries, crane, delays, accidents and photos."},
+  delays:{name:"Delay Register",short:"Delay register",desc:"Every delay in the range, hours lost by cause and by week."},
+  variations:{name:"Variations Register",short:"Variations register",desc:"Every variation in the range with counts per status."},
+  manpower:{name:"Manpower and Crane",short:"Manpower and crane",desc:"Men on site and crane hours per day, crane usage by hour."},
+  calendar:{name:"Pours and Handovers",short:"Pour and handover calendar",desc:"Month calendar of concrete pours and handovers."}
+};
+const rpDay=k=>days[k]?fix(clone(days[k])):null;               /* a copy: reports never touch the real day */
+const rpIncl=k=>dayStatus(k)!=="blank";                       /* only completed or in-progress days */
+const rpRange=(a,b)=>{const o=[];for(let k=a;k<=b;k=shift(k,1))o.push(k);return o};
+const rpDays=(a,b)=>rpRange(a,b).filter(rpIncl);
+const rpMon=k=>{const d=new Date(k+"T12:00:00");return shift(k,-((d.getDay()+6)%7))};
+const rpD=k=>new Date(k+"T12:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"}).replace(",","");
+const rpDM=k=>new Date(k+"T12:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"}).replace(",","");
+const rpMonthName=k=>new Date(k+"T12:00:00").toLocaleDateString("en-AU",{month:"long",year:"numeric"});
+function rpRangeText(a,b){if(!b||a===b)return nice(a);
+  const A=new Date(a+"T12:00:00"),B=new Date(b+"T12:00:00"),wd=x=>x.toLocaleDateString("en-AU",{weekday:"long"});
+  const sameM=A.getMonth()===B.getMonth()&&A.getFullYear()===B.getFullYear(),sameY=A.getFullYear()===B.getFullYear();
+  const mA=A.toLocaleDateString("en-AU",{month:"long"}),mB=B.toLocaleDateString("en-AU",{month:"long"});
+  return sameM?`${wd(A)} ${A.getDate()} - ${wd(B)} ${B.getDate()} ${mB} ${B.getFullYear()}`
+       :sameY?`${wd(A)} ${A.getDate()} ${mA} - ${wd(B)} ${B.getDate()} ${mB} ${B.getFullYear()}`
+       :`${wd(A)} ${A.getDate()} ${mA} ${A.getFullYear()} - ${wd(B)} ${B.getDate()} ${mB} ${B.getFullYear()}`}
+function rpShortRange(a,b){if(!b||a===b)return new Date(a+"T12:00:00").toLocaleDateString("en-AU",{day:"numeric",month:"long",year:"numeric"});
+  const A=new Date(a+"T12:00:00"),B=new Date(b+"T12:00:00"),m=x=>x.toLocaleDateString("en-AU",{month:"long"});
+  return A.getMonth()===B.getMonth()&&A.getFullYear()===B.getFullYear()?`${A.getDate()} - ${B.getDate()} ${m(B)} ${B.getFullYear()}`:`${A.getDate()} ${m(A)} - ${B.getDate()} ${m(B)} ${B.getFullYear()}`}
+const rpNum=v=>{const n=+Number(v||0).toFixed(2);return String(n)};
+function rpWeather(d){const p=[d.weather||"-"];const w=d.wx;
+  if(w&&!d.weatherManual){if(w.max!=null)p.push(`${Math.round(w.max)}°/${Math.round(w.min)}°`);if(w.rain>0)p.push(`${w.rain} mm`);if(w.wind!=null)p.push(`wind ${Math.round(w.wind)} km/h`)}
+  return p.join(", ")}
+const rpCraneH=d=>(d.craneHrs||[]).filter(s=>SLOTS.includes(s)).length;
+const rpStatus=k=>dayStatus(k)==="done"?"Completed":dayStatus(k)==="wip"?"In progress":"No diary";
+const rpDelaysIn=(a,b)=>regSorted("d").filter(x=>x.start_date>=a&&x.start_date<=b).reverse();
+const rpVarsIn=(a,b)=>regSorted("v").filter(x=>x.raised_date>=a&&x.raised_date<=b).reverse();
+const rpHrsText=x=>x.status==="Ongoing"?"Ongoing":(delayHours(x)==null?"-":rpNum(delayHours(x)));
+/* photos with a derived tag and area (photos have no tag of their own) */
+function rpPhotos(a,b){const out=[];
+  rpDays(a,b).forEach(k=>{const d=rpDay(k);if(!d)return;(d.photos||[]).forEach(p=>out.push({p,date:k,tag:"Site activity",area:d.areas||"",caption:p.caption||"",sort:k+(p.time||"")}))});
+  rpDelaysIn(a,b).forEach(x=>(x.photos||[]).forEach(p=>out.push({p,date:x.start_date,tag:"Delay",area:x.area||"",caption:(p.caption||x.description||"")+` (${refLabel("d",x)})`,sort:x.start_date+(p.time||"")})));
+  rpVarsIn(a,b).forEach(x=>(x.photos||[]).forEach(p=>out.push({p,date:x.raised_date,tag:"Variation",area:x.area||"",caption:(p.caption||x.description||"")+` (${refLabel("v",x)})`,sort:x.raised_date+(p.time||"")})));
+  return out.sort((m,n)=>m.sort.localeCompare(n.sort))}
+
+/* ---------- PDF kit: same look as the daily diary PDF ---------- */
+function pdfKit(){
+  const doc=new window.jspdf.jsPDF({unit:"mm",format:"a4"}),W=210,M=12,CW=W-2*M,BOT=281;let y=M;
+  const INK=[29,31,34],GR=[120,120,120],RED=[255,49,49],LG=[150,150,150];
+  const col=c=>doc.setTextColor(c[0],c[1],c[2]);
+  const font=(st,sz)=>{doc.setFont("helvetica",st);doc.setFontSize(sz)};
+  const split=(t,w)=>doc.splitTextToSize(clean(t),w);
+  const cut=(t,w)=>{const L=split(String(t==null||t===""?"-":t),w);return L.length>1?L[0].replace(/\s*\S{0,2}$/,"")+"...":L[0]};
+  const K={doc,M,CW,INK,GR,RED,col,font,split,cut,get y(){return y},set y(v){y=v}};
+  K.header=()=>{try{doc.addImage(LOGO,"PNG",M,y,38,38*8.72/42)}catch(e){font("bold",16);col(INK);doc.text("transform.",M,y+6)}
+    try{const hw=32;doc.addImage(HFULL,"PNG",W-M-hw,y+.8,hw,hw*HF_R)}catch(e){}
+    y+=13;doc.setFillColor(255,49,49);doc.rect(M,y,CW*.3,1.1,"F");doc.setFillColor(29,31,34);doc.rect(M+CW*.3,y,CW*.7,1.1,"F");y+=7};
+  K.newPage=()=>{doc.addPage();y=M;K.header()};
+  K.ensure=h=>{if(y+h>BOT){K.newPage();return true}return false};
+  K.title=(t,sub)=>{font("bold",20);col(INK);doc.text(t,M,y+6);const tw=doc.getTextWidth(t);col(RED);doc.text(".",M+tw,y+6);
+    font("normal",9.5);col(GR);doc.text(clean(sub),M,y+12);y+=19};
+  K.sec=(t,x,w)=>{x=x==null?M:x;w=w==null?CW:w;const T=t.toUpperCase();
+    doc.setFillColor(255,49,49);doc.roundedRect(x,y,1.1,3.6,.5,.5,"F");font("bold",7.5);col(INK);
+    doc.text(T,x+3,y+2.9);const tw=doc.getTextWidth(T);doc.setDrawColor(228,228,228);doc.setLineWidth(.2);const lx=x+3+tw+2;if(lx<x+w)doc.line(lx,y+1.8,x+w,y+1.8);y+=6};
+  K.secK=(t,min)=>{K.ensure(6+(min||12));K.sec(t)};
+  const drawBox=(x,w,L,h,empty)=>{doc.setFillColor(250,250,250);doc.rect(x,y,w,h,"F");doc.setFillColor(221,221,221);doc.rect(x,y,.8,h,"F");
+    font("normal",9.5);col(empty?LG:INK);L.forEach((l,i)=>doc.text(l,x+4,y+4.4+i*4.4))};
+  K.textSec=(heading,text)=>{const t=clean(text).trim();font("normal",9.5);const L=split(t||"None recorded",CW-7),h=L.length*4.4+4.2;
+    K.ensure(6+Math.min(h,40));K.sec(heading);
+    if(y+h>BOT){col(INK);L.forEach(l=>{if(K.ensure(5))0;doc.text(l,M+4,y+4);y+=4.4});y+=4;return}
+    drawBox(M,CW,L,h,!t);y+=h+4};
+  K.two=(ha,ta,hb,tb)=>{const cw=(CW-5)/2;font("normal",9.5);const a=clean(ta).trim(),b=clean(tb).trim();
+    const La=split(a||"None recorded",cw-7),Lb=split(b||"None recorded",cw-7),h=Math.max(La.length,Lb.length)*4.4+4.2;
+    if(6+h>BOT-M-20){K.textSec(ha,ta);K.textSec(hb,tb);return}
+    K.ensure(6+h);const y0=y;K.sec(ha,M,cw);drawBox(M,cw,La,h,!a);y=y0;K.sec(hb,M+cw+5,cw);drawBox(M+cw+5,cw,Lb,h,!b);y=y0+6+h+4};
+  K.none=()=>{K.ensure(8);font("normal",9.5);col(LG);doc.text("None recorded",M+2,y+4);y+=9};
+  K.grid=rows=>{const rh=11.5,h=rh*rows.length;K.ensure(h+6);
+    doc.setDrawColor(225,225,225);doc.setLineWidth(.25);doc.roundedRect(M,y,CW,h,2,2,"S");
+    rows.forEach((r,ri)=>{const units=r.reduce((s,c)=>s+(c.span||1),0);let x=M;const yy=y+ri*rh;
+      if(ri>0)doc.line(M,yy,M+CW,yy);
+      r.forEach((c,ci)=>{const w=CW*(c.span||1)/units;if(ci>0)doc.line(x,yy,x,yy+rh);
+        font("bold",6.2);col([119,119,119]);doc.text(cut(c.l.toUpperCase(),w-5),x+3,yy+4.3);font("bold",9.5);col(INK);doc.text(cut(c.v,w-6),x+3,yy+9);x+=w})});
+    y+=h+7};
+  K.projRow=()=>[{l:"Builder",v:DEFAULTS.builder},{l:"Project",v:DEFAULTS.project},{l:"Address",v:DEFAULTS.address,span:2}];
+  /* table that breaks across pages and repeats its heading row */
+  K.table=(cols,rows,o)=>{o=o||{};const ws=cols.map(c=>c.w*CW),fs=o.fs||8.8,lh=3.9;
+    const head=()=>{font("bold",6.5);col([119,119,119]);let x=M;cols.forEach((c,i)=>{const r=c.a==="r";doc.text(c.h.toUpperCase(),r?x+ws[i]-2:x+2,y+3,r?{align:"right"}:{});x+=ws[i]});
+      doc.setDrawColor(29,31,34);doc.setLineWidth(.4);doc.line(M,y+4.6,M+CW,y+4.6);y+=5.6};
+    K.ensure(15);head();
+    const row=(r,last)=>{const cells=r.map((v,i)=>{const c=v&&typeof v==="object"?v:{t:v};font(c.bold?"bold":"normal",fs);
+        const txt=c.t==null||c.t===""?"-":String(c.t);return {...c,L:c.pill?[clean(txt).toUpperCase()]:split(txt,ws[i]-4)}});
+      const h=Math.max(...cells.map(c=>c.L.length))*lh+3;
+      if(y+h>BOT){K.newPage();head()}
+      let x=M;cells.forEach((c,i)=>{const r=cols[i].a==="r";
+        if(c.pill){font("bold",6.3);const pw=doc.getTextWidth(c.L[0])+4;doc.setFillColor(c.pill[0],c.pill[1],c.pill[2]);doc.roundedRect(x+2,y+1.1,pw,4.1,.8,.8,"F");col([255,255,255]);doc.text(c.L[0],x+2+pw/2,y+4,{align:"center"})}
+        else{font(c.bold?"bold":"normal",fs);col(c.color||(c.muted?LG:INK));c.L.forEach((l,j)=>doc.text(l,r?x+ws[i]-2:x+2,y+4+j*lh,r?{align:"right"}:{}))}
+        x+=ws[i]});
+      if(last){doc.setDrawColor(29,31,34);doc.setLineWidth(.4)}else{doc.setDrawColor(235,235,235);doc.setLineWidth(.2)}
+      doc.line(M,y+h,M+CW,y+h);y+=h};
+    rows.forEach(r=>row(r,false));
+    if(o.total){const h=7;if(y+h>BOT){K.newPage();head()}const first=Math.min(...Object.keys(o.total.cells||{}).map(Number).concat([cols.length]));
+      const lwid=ws.slice(0,first).reduce((s2,v)=>s2+v,0);font("bold",fs);col(INK);doc.text(cut(o.total.label,lwid-4),M+2,y+4.6);
+      let x=M;cols.forEach((c,i)=>{const v=(o.total.cells||{})[i];if(v!=null){const r=c.a==="r";doc.text(String(v),r?x+ws[i]-2:x+2,y+4.6,r?{align:"right"}:{})}x+=ws[i]});
+      doc.setDrawColor(29,31,34);doc.setLineWidth(.4);doc.line(M,y+h,M+CW,y+h);y+=h}
+    y+=5};
+  /* simple vertical bar chart: thin bars, rounded tops, light gridlines, dashed average, labelled peak, gap between weeks */
+  K.bars=(data,color,fmt)=>{const H=36,LW=8,top=5;K.ensure(top+H+10);
+    const vmax=Math.max(0,...data.map(d=>d.v));let step=1;const raw=Math.max(vmax,1)/4;for(const s of [1,2,5,10,20,25,50,100]){step=s;if(s>=raw)break}
+    const ymax=Math.max(step,Math.ceil(vmax/step)*step),x0=M+LW,w0=CW-LW,gapW=3,ng=data.filter(d=>d.gap).length;
+    const slot=(w0-ng*gapW)/Math.max(1,data.length),yb=y+top+H;
+    for(let v=0;v<=ymax+1e-9;v+=step){const yy=yb-v/ymax*H;doc.setDrawColor(232,232,232);doc.setLineWidth(.2);doc.line(x0,yy,x0+w0,yy);font("normal",6.5);col(GR);doc.text(String(v),x0-1.5,yy+1,{align:"right"})}
+    let x=x0,peakDone=false;const every=Math.ceil(data.length/16);
+    data.forEach((d,i)=>{if(d.gap)x+=gapW;const bw=Math.min(slot*.5,6),bx=x+(slot-bw)/2,bh=vmax?d.v/ymax*H:0;
+      if(bh>0){doc.setFillColor(color[0],color[1],color[2]);const r=Math.min(1,bw/2,bh/2);doc.roundedRect(bx,yb-bh,bw,bh,r,r,"F");doc.rect(bx,yb-r,bw,r,"F")}
+      if(vmax>0&&d.v===vmax&&!peakDone){peakDone=true;font("bold",7);col(INK);doc.text(fmt(d.v),bx+bw/2,yb-bh-1.3,{align:"center"})}
+      if(i%every===0){font("normal",6.2);col(INK);doc.text(d.label,x+slot/2,yb+3.6,{align:"center"})}
+      x+=slot});
+    doc.setDrawColor(29,31,34);doc.setLineWidth(.3);doc.line(x0,yb,x0+w0,yb);
+    const avg=data.length?data.reduce((s,d)=>s+d.v,0)/data.length:0;
+    if(avg>0){const ya=yb-avg/ymax*H;doc.setDrawColor(120,120,120);doc.setLineWidth(.35);doc.setLineDashPattern([1.2,1],0);doc.line(x0,ya,x0+w0,ya);doc.setLineDashPattern([],0);
+      font("normal",6.5);const t="Avg "+fmt(avg),tw=doc.getTextWidth(t);doc.setFillColor(255,255,255);doc.rect(x0+w0-tw-2.5,ya-3.3,tw+2.5,2.9,"F");col(INK);doc.text(t,x0+w0-1,ya-1,{align:"right"})}
+    y=yb+8};
+  /* horizontal bars for "hours lost by cause" etc. */
+  K.hbars=(rows,fmt)=>{const lw=42,vw=16,bwMax=CW-lw-vw-4,max=Math.max(0,...rows.map(r=>r.v||0));
+    rows.forEach(r=>{K.ensure(7);font("normal",8.8);col(INK);doc.text(cut(r.label,lw-2),M,y+4);
+      if(r.text){font("bold",8.8);col(r.color||INK);doc.text(r.text,M+lw,y+4)}
+      else{const w=max?Math.max(.8,(r.v/max)*bwMax):.8;doc.setFillColor(255,49,49);doc.roundedRect(M+lw,y+1.2,w,3.6,.8,.8,"F");doc.rect(M+lw,y+1.2,1,3.6,"F")}
+      font("normal",8.8);col(INK);doc.text(r.text?"-":fmt(r.v),M+CW,y+4,{align:"right"});y+=6.4});y+=3};
+  K.photoPages=async(list,title,sub)=>{if(!list.length)return;K.newPage();K.title(title,sub);
+    const bw=(CW-6)/2,bh=58;
+    for(let i=0;i<list.length;i+=2){const items=[];
+      for(const it of list.slice(i,i+2)){let im=null;try{im=await photoData(it.p)}catch(e){}font("normal",8.6);items.push({it,im,cap:split(it.text,bw)})}
+      const lines=Math.max(...items.map(t=>t.cap.length+1)),rh=bh+3+lines*3.9+5;
+      K.ensure(rh);
+      items.forEach((t,k)=>{const x=M+k*(bw+6);doc.setFillColor(233,237,240);doc.roundedRect(x,y,bw,bh,1.5,1.5,"F");
+        if(t.im){const f=Math.min(bw/t.im.w,bh/t.im.h),w=t.im.w*f,h=t.im.h*f;try{doc.addImage(t.im.data,"JPEG",x+(bw-w)/2,y+(bh-h)/2,w,h)}catch(e){}}
+        else{font("normal",8.6);col(LG);doc.text("Photo could not be loaded",x+3,y+7)}
+        font("bold",8.6);col(RED);const tag=clean(t.it.head[0]);doc.text(tag,x,y+bh+4);const tw=doc.getTextWidth(tag);
+        font("normal",8.6);col(INK);doc.text(cut(t.it.head.slice(1).filter(Boolean).map(s=>" · "+s).join(""),bw-tw),x+tw,y+bh+4);
+        t.cap.forEach((l,j)=>doc.text(l,x,y+bh+4+(j+1)*3.9))});
+      y+=rh}};
+  K.finish=footer=>{const n=doc.getNumberOfPages();
+    for(let i=1;i<=n;i++){doc.setPage(i);doc.setDrawColor(228,228,228);doc.setLineWidth(.2);doc.line(M,287,W-M,287);
+      font("normal",7.5);col([136,136,136]);doc.text(clean(footer),M,291.5);doc.text(`Page ${i} of ${n}`,W-M,291.5,{align:"right"})}
+    return doc.output("blob")};
+  K.header();return K;
+}
+const rpFooter=(name,a,b,label)=>`${name}   |   ${DEFAULTS.builder}   |   ${DEFAULTS.project}   |   ${label||rpShortRange(a,b)}`;
+
+/* ---------- 1. Weekly progress report ---------- */
+function rpWeeklyData(a,b){
+  const all=rpRange(a,b),inc=all.filter(rpIncl),D={};inc.forEach(k=>D[k]=rpDay(k)||fix(blank()));
+  const pours=[],hands=[],acc=[];let deliveries=0,crane=0;
+  inc.forEach(k=>{const d=D[k];deliveries+=(d.deliveries||[]).length;crane+=rpCraneH(d);
+    items(d.pour).forEach(t=>pours.push({k,t}));items(d.handover).forEach(t=>hands.push({k,t}));items(d.accidents).forEach(t=>acc.push({k,t}))});
+  return {all,inc,D,pours,hands,acc,deliveries,crane,delays:rpDelaysIn(a,b),vars:rpVarsIn(a,b)}}
+const rpDelayLine=x=>`${refLabel("d",x)} ${rpD(x.start_date)}${x.start_time?" "+x.start_time:""}: ${x.description||""}. ${x.status==="Ongoing"?"Ongoing":(delayHours(x)==null?"Resolved":rpNum(delayHours(x))+" h lost")}${x.cause?` (${x.cause})`:""}`;
+const rpVarLine=x=>`${refLabel("v",x)} ${rpD(x.raised_date)}: ${x.description||""} (${x.status.toLowerCase()}${x.reference?", "+x.reference:""})`;
+function rpGlanceRows(W){const rows=[];let gap=[];
+  const flush=()=>{if(!gap.length)return;const lab=gap.length>1?`${rpD(gap[0])} - ${rpD(gap[gap.length-1])}`:rpD(gap[0]);
+    rows.push([{t:lab,muted:1},{t:"-",muted:1},{t:"-",muted:1},{t:"-",muted:1},{t:"-",muted:1},{t:"No diary",muted:1}]);gap=[]};
+  W.all.forEach(k=>{if(!W.D[k]){gap.push(k);return}flush();const d=W.D[k];
+    rows.push([rpD(k),rpWeather(d),String(d.hours===""?"-":d.hours),String(total(d)),String(rpCraneH(d)),rpStatus(k)])});
+  flush();return rows}
+async function buildWeekly(a,b,photos){
+  const W=rpWeeklyData(a,b),K=pdfKit();
+  K.title(RPT.weekly.name,rpRangeText(a,b));
+  K.grid([K.projRow(),[{l:"Days reported",v:`${W.inc.length} of ${W.all.length}`},{l:"Deliveries",v:String(W.deliveries)},{l:"Crane hours",v:String(W.crane)},{l:"Concrete pours",v:String(W.pours.length)}]]);
+  K.secK("Days at a glance");
+  K.table([{h:"Day",w:.13},{h:"Weather",w:.37},{h:"Hours",w:.1,a:"r"},{h:"Total men",w:.12,a:"r"},{h:"Crane hrs",w:.12,a:"r"},{h:"Status",w:.16}],rpGlanceRows(W));
+  K.secK("Activities by day");
+  const act=W.inc.filter(k=>items(W.D[k].activity).length||W.D[k].areas);
+  if(act.length)K.table([{h:"Day",w:.13},{h:"Working areas",w:.25},{h:"Site activity",w:.62}],act.map(k=>[rpD(k),W.D[k].areas||"-",items(W.D[k].activity).join("\n")||"-"]));else K.none();
+  K.two("Concrete pour",W.pours.map(p=>`${rpD(p.k)}: ${p.t}`).join("\n"),"Deck and verticals handover",W.hands.map(p=>`${rpD(p.k)}: ${p.t}`).join("\n"));
+  K.textSec("Delays",W.delays.map(rpDelayLine).join("\n"));
+  K.two("Variations raised",W.vars.map(rpVarLine).join("\n"),"Accidents / injuries",W.acc.map(p=>`${rpD(p.k)}: ${p.t}`).join("\n"));
+  if(photos&&photos.length)await K.photoPages(photos.map(x=>({p:x.p,head:[x.tag,x.area,rpD(x.date)],text:x.caption})),"Photos",`${rpRangeText(a,b)}   |   ${DEFAULTS.project}`);
+  else if(photos===null){K.newPage();K.title("Photos",`${rpRangeText(a,b)}   |   ${DEFAULTS.project}`);K.secK("Photos from the week");K.none()}
+  return K.finish(rpFooter(RPT.weekly.name,a,b));
+}
+function textWeekly(a,b,photos){const W=rpWeeklyData(a,b),L=[];
+  L.push(RPT.weekly.name.toUpperCase(),rpRangeText(a,b),`Builder: ${DEFAULTS.builder}`,`Project: ${DEFAULTS.project}`,`Address: ${DEFAULTS.address||"-"}`,
+    `Days reported: ${W.inc.length} of ${W.all.length}   Deliveries: ${W.deliveries}   Crane hours: ${W.crane}   Concrete pours: ${W.pours.length}`,"","DAYS AT A GLANCE");
+  rpGlanceRows(W).forEach(r=>L.push("  "+r.map(c=>c&&typeof c==="object"?c.t:c).join(" | ")));
+  L.push("","ACTIVITIES BY DAY");const act=W.inc.filter(k=>items(W.D[k].activity).length||W.D[k].areas);
+  if(act.length)act.forEach(k=>{L.push(`  ${rpD(k)} (${W.D[k].areas||"no area"})`);items(W.D[k].activity).forEach(t=>L.push("    - "+t))});else L.push("  None recorded");
+  const blk=(h,arr)=>{L.push("",h);if(arr.length)arr.forEach(t=>L.push("  "+t));else L.push("  None recorded")};
+  blk("CONCRETE POUR",W.pours.map(p=>`${rpD(p.k)}: ${p.t}`));blk("DECK AND VERTICALS HANDOVER",W.hands.map(p=>`${rpD(p.k)}: ${p.t}`));
+  blk("DELAYS",W.delays.map(rpDelayLine));blk("VARIATIONS RAISED",W.vars.map(rpVarLine));blk("ACCIDENTS / INJURIES",W.acc.map(p=>`${rpD(p.k)}: ${p.t}`));
+  if(photos&&photos.length)blk("PHOTOS",photos.map(x=>`${rpD(x.date)} · ${x.tag}${x.area?" · "+x.area:""}: ${x.caption||"(no caption)"}`));
+  return L.join("\n")}
+
+/* ---------- 2. Delay register ---------- */
+function rpDelayData(a,b){const L=rpDelaysIn(a,b),res=L.filter(x=>x.status!=="Ongoing"),hrs=res.reduce((s,x)=>s+(delayHours(x)||0),0);
+  const byCause={};L.forEach(x=>{const c=x.cause||"No cause";const o=byCause[c]=byCause[c]||{label:c,v:0,n:0,on:0};o.n++;if(x.status==="Ongoing")o.on++;else o.v+=delayHours(x)||0});
+  const causes=Object.values(byCause).sort((m,n)=>n.v-m.v||n.n-m.n);
+  const weeks={};L.forEach(x=>{const w=rpMon(x.start_date);const o=weeks[w]=weeks[w]||{w,n:0,h:0};o.n++;if(x.status!=="Ongoing")o.h+=delayHours(x)||0});
+  return {L,hrs,ongoing:L.length-res.length,weather:L.filter(x=>(x.cause||"").toLowerCase()==="weather").length,causes,weeks:Object.values(weeks).sort((m,n)=>m.w.localeCompare(n.w))}}
+async function buildDelays(a,b,withPh){const R=rpDelayData(a,b),K=pdfKit();
+  K.title(RPT.delays.name,rpRangeText(a,b));
+  K.grid([K.projRow(),[{l:"Delays recorded",v:String(R.L.length)},{l:"Hours lost",v:rpNum(R.hrs)},{l:"Still ongoing",v:String(R.ongoing)},{l:"Weather delays",v:String(R.weather)}]]);
+  K.secK("All delays");
+  if(R.L.length)K.table([{h:"Ref",w:.07},{h:"Date",w:.13},{h:"Time",w:.07},{h:"Description",w:.30},{h:"Area",w:.11},{h:"Cause",w:.14},{h:"Hrs",w:.11,a:"r"},{h:"Photos",w:.07,a:"r"}],
+    R.L.map(x=>[refLabel("d",x),rpDM(x.start_date),x.start_time||"-",x.description,x.area||"-",x.cause||"-",x.status==="Ongoing"?{t:"Ongoing",bold:1,color:[217,52,43]}:rpHrsText(x),String((x.photos||[]).length)]),
+    {total:{label:"Total hours lost (excluding ongoing)",cells:{6:rpNum(R.hrs)}}});
+  else K.none();
+  K.secK("Hours lost by cause",Math.min(200,R.causes.length*6.4+4));
+  if(R.causes.length)K.hbars(R.causes.map(c=>c.v>0||!c.on?{label:c.label,v:c.v}:{label:c.label,text:"Ongoing",color:[217,52,43]}),rpNum);else K.none();
+  K.secK("Hours lost by week");
+  if(R.weeks.length)K.table([{h:"Week starting",w:.5},{h:"Delays",w:.25,a:"r"},{h:"Hrs",w:.25,a:"r"}],R.weeks.map(w=>[rpDM(w.w),String(w.n),rpNum(w.h)]),
+    {total:{label:"Total",cells:{1:String(R.L.length),2:rpNum(R.hrs)}}});else K.none();
+  if(withPh){const ph=[];R.L.forEach(x=>(x.photos||[]).forEach(p=>ph.push({p,head:[refLabel("d",x),x.area,rpD(x.start_date)],text:p.caption||x.description||""})));
+    if(ph.length)await K.photoPages(ph,"Delay photos",rpRangeText(a,b));}
+  return K.finish(rpFooter(RPT.delays.name,a,b))}
+function textDelays(a,b){const R=rpDelayData(a,b),L=[RPT.delays.name.toUpperCase(),rpRangeText(a,b),`Project: ${DEFAULTS.project}`,
+  `Delays recorded: ${R.L.length}   Hours lost: ${rpNum(R.hrs)}   Still ongoing: ${R.ongoing}   Weather delays: ${R.weather}`,"","ALL DELAYS"];
+  if(R.L.length)R.L.forEach(x=>L.push(`  ${refLabel("d",x)} | ${rpDM(x.start_date)} ${x.start_time||""} | ${x.description} | ${x.area||"-"} | ${x.cause||"-"} | ${rpHrsText(x)}`));else L.push("  None recorded");
+  L.push(`  Total hours lost (excluding ongoing): ${rpNum(R.hrs)}`,"","HOURS LOST BY CAUSE");
+  if(R.causes.length)R.causes.forEach(c=>L.push(`  ${c.label}: ${c.v>0||!c.on?rpNum(c.v)+" h":"Ongoing"}`));else L.push("  None recorded");
+  L.push("","HOURS LOST BY WEEK");if(R.weeks.length)R.weeks.forEach(w=>L.push(`  Week starting ${rpDM(w.w)}: ${w.n} delay(s), ${rpNum(w.h)} h`));else L.push("  None recorded");
+  return L.join("\n")}
+
+/* ---------- 3. Variations register ---------- */
+const VPILL={Raised:[120,120,120],"Awaiting approval":[230,140,10],Approved:[30,158,87],Rejected:[217,52,43]};
+async function buildVariations(a,b,withPh){const L=rpVarsIn(a,b),cnt=s=>L.filter(x=>x.status===s).length,K=pdfKit();
+  K.title(RPT.variations.name,rpRangeText(a,b));
+  K.grid([K.projRow(),[{l:"Variations",v:String(L.length)},...VAR_STATUS.map(s=>({l:s,v:String(cnt(s))}))]]);
+  K.secK("All variations");
+  if(L.length)K.table([{h:"Ref",w:.08},{h:"Date",w:.13},{h:"Description",w:.34},{h:"Area",w:.13},{h:"Status",w:.24},{h:"Photos",w:.08,a:"r"}],
+    L.map(x=>[refLabel("v",x),rpDM(x.raised_date),x.description+(x.reference?` (${x.reference})`:""),x.area||"-",{t:x.status,pill:VPILL[x.status]||[120,120,120]},String((x.photos||[]).length)]),
+    {total:{label:`Total variations: ${L.length}`,cells:{}}});
+  else K.none();
+  if(withPh){const ph=[];L.forEach(x=>(x.photos||[]).forEach(p=>ph.push({p,head:[refLabel("v",x),x.area,rpD(x.raised_date)],text:p.caption||x.description||""})));
+    if(ph.length)await K.photoPages(ph,"Variation photos",rpRangeText(a,b));}
+  return K.finish(rpFooter(RPT.variations.name,a,b))}
+function textVariations(a,b){const L=rpVarsIn(a,b),O=[RPT.variations.name.toUpperCase(),rpRangeText(a,b),`Project: ${DEFAULTS.project}`,
+  `Variations: ${L.length}   `+VAR_STATUS.map(s=>`${s}: ${L.filter(x=>x.status===s).length}`).join("   "),"","ALL VARIATIONS"];
+  if(L.length)L.forEach(x=>O.push(`  ${refLabel("v",x)} | ${rpDM(x.raised_date)} | ${x.description}${x.reference?` (${x.reference})`:""} | ${x.area||"-"} | ${x.status}`));else O.push("  None recorded");
+  O.push(`  Total variations: ${L.length}`);return O.join("\n")}
+
+/* ---------- 4. Manpower and crane ---------- */
+function rpManData(a,b){const inc=rpDays(a,b),D=inc.map(k=>({k,d:rpDay(k)||fix(blank())}));
+  const men=D.map(x=>total(x.d)),cr=D.map(x=>rpCraneH(x.d)),n=D.length;
+  const avgM=n?men.reduce((s,v)=>s+v,0)/n:0,avgC=n?cr.reduce((s,v)=>s+v,0)/n:0,pk=n?Math.max(...men):0,pkDay=n?D[men.indexOf(pk)].k:null;
+  const slotUse=SLOTS.map(s=>D.filter(x=>(x.d.craneHrs||[]).includes(s)).length);
+  const roles=CREW.map(r=>{const v=D.map(x=>x.d.crew[r]||0);return {r,sum:v.reduce((s,z)=>s+z,0),peak:n?Math.max(...v):0}}).filter(x=>x.sum>0);
+  return {D,men,cr,n,avgM,avgC,pk,pkDay,totC:cr.reduce((s,v)=>s+v,0),slotUse,roles}}
+function rpBusiest(R){const mx=Math.max(0,...R.slotUse);if(!mx)return "The crane wasn't used in this period.";
+  const hs=SLOTS.filter((s,i)=>R.slotUse[i]===mx),rg=craneRanges({craneHrs:hs});
+  return `Busiest hours: ${rg.join(", ")}, with the crane on site ${mx===R.n?"every day":`on ${mx} of ${R.n} days`}.`}
+const rpBarData=(R,vals)=>R.D.map((x,i)=>({label:rpD(x.k),v:vals[i],gap:i>0&&rpMon(x.k)!==rpMon(R.D[i-1].k)}));
+async function buildManpower(a,b,roles){const R=rpManData(a,b),K=pdfKit();
+  K.title(RPT.manpower.name,rpRangeText(a,b));
+  K.grid([K.projRow(),[{l:"Avg total men",v:rpNum(R.avgM)},{l:"Peak total men",v:R.pkDay?`${R.pk} (${rpD(R.pkDay)})`:"0"},{l:"Crane hours",v:String(R.totC)},{l:"Avg crane hrs/day",v:rpNum(R.avgC)}]]);
+  K.secK("Total men on site per day",50);if(R.n)K.bars(rpBarData(R,R.men),[29,31,34],v=>rpNum(v));else K.none();
+  K.secK("Crane hours per day",50);if(R.n)K.bars(rpBarData(R,R.cr),[255,49,49],v=>rpNum(v));else K.none();
+  K.secK("Hours the crane was on site",30);
+  if(R.n){const {doc,M,CW,font,col}=K;
+    font("normal",7.5);col(K.INK);doc.setFillColor(255,49,49);doc.rect(M,K.y,3.2,3.2,"F");doc.text("Crane on site",M+4.6,K.y+2.7);
+    doc.setFillColor(244,244,244);doc.setDrawColor(225,225,225);doc.rect(M+30,K.y,3.2,3.2,"FD");doc.text("Not used",M+34.6,K.y+2.7);K.y+=6;
+    const lw=18,cw=(CW-lw)/13,rh=4.3,lab=["5a","6a","7a","8a","9a","10a","11a","12p","1p","2p","3p","4p","5p"];
+    const head=()=>{font("normal",6.5);col(K.GR);lab.forEach((h,i)=>doc.text(h,M+lw+i*cw+cw/2,K.y+3,{align:"center"}));K.y+=4.5};
+    head();
+    R.D.forEach(x=>{if(K.ensure(rh+.6))head();font("normal",7.2);col(K.INK);doc.text(rpD(x.k),M,K.y+3.2);
+      SLOTS.forEach((s,i)=>{const on=(x.d.craneHrs||[]).includes(s);if(on)doc.setFillColor(255,49,49);else doc.setFillColor(244,244,244);doc.rect(M+lw+i*cw+.25,K.y,cw-.5,rh-.4,"F")});K.y+=rh});
+    K.y+=3;K.ensure(8);font("normal",9);col(K.INK);doc.text(clean(rpBusiest(R)),M,K.y+3.5);K.y+=9}else K.none();
+  if(roles){K.secK("Manpower by role");
+    if(R.roles.length)K.table([{h:"Role",w:.46},{h:"Man-days",w:.18,a:"r"},{h:"Average per day",w:.2,a:"r"},{h:"Peak",w:.16,a:"r"}],
+      R.roles.map(x=>[x.r,String(x.sum),rpNum(x.sum/R.n),String(x.peak)]),{total:{label:"All roles",cells:{1:String(R.men.reduce((s2,v)=>s2+v,0)),2:rpNum(R.avgM),3:String(R.pk)}}});
+    else K.none()}
+  return K.finish(rpFooter(RPT.manpower.name,a,b))}
+function textManpower(a,b,roles){const R=rpManData(a,b),L=[RPT.manpower.name.toUpperCase(),rpRangeText(a,b),`Project: ${DEFAULTS.project}`,
+  `Avg total men: ${rpNum(R.avgM)}   Peak: ${R.pkDay?`${R.pk} (${rpD(R.pkDay)})`:"0"}   Crane hours: ${R.totC}   Avg crane hrs/day: ${rpNum(R.avgC)}`,"","PER DAY (men / crane hours / crane times)"];
+  if(R.n)R.D.forEach((x,i)=>L.push(`  ${rpD(x.k)}: ${R.men[i]} men, ${R.cr[i]} crane h${R.cr[i]?" ("+craneRanges(x.d).join(", ")+")":""}`));else L.push("  None recorded");
+  L.push("",R.n?rpBusiest(R):"Busiest hours: none recorded");
+  if(roles){L.push("","MANPOWER BY ROLE");if(R.roles.length)R.roles.forEach(x=>L.push(`  ${x.r}: ${x.sum} man-days, avg ${rpNum(x.sum/R.n)}/day, peak ${x.peak}`));else L.push("  None recorded")}
+  return L.join("\n")}
+
+/* ---------- 5. Pour and handover calendar (one month) ---------- */
+function rpCalData(m){const a=m+"-01",last=new Date(Number(m.slice(0,4)),Number(m.slice(5,7)),0).getDate(),b=`${m}-${String(last).padStart(2,"0")}`;
+  const ev=[];rpDays(a,b).forEach(k=>{const d=rpDay(k);if(!d)return;items(d.pour).forEach(t=>ev.push({k,type:"Pour",t}));items(d.handover).forEach(t=>ev.push({k,type:"Handover",t}))});
+  const P=ev.filter(e=>e.type==="Pour"),H=ev.filter(e=>e.type==="Handover");
+  return {a,b,ev,P,H,lastP:P.length?P[P.length-1].k:null,lastH:H.length?H[H.length-1].k:null}}
+async function buildCalendar(m){const C=rpCalData(m),K=pdfKit(),{doc,M,CW,font,col}=K;
+  K.title(RPT.calendar.name,rpMonthName(C.a));
+  K.grid([K.projRow(),[{l:"Concrete pours",v:String(C.P.length)},{l:"Handovers",v:String(C.H.length)},{l:"Last pour",v:C.lastP?rpDM(C.lastP):"-"},{l:"Last handover",v:C.lastH?rpDM(C.lastH):"-"}]]);
+  K.secK("Calendar",150);
+  font("normal",7.5);col(K.INK);doc.setFillColor(255,49,49);doc.rect(M,K.y,3.2,3.2,"F");doc.text("Pour",M+4.6,K.y+2.7);doc.setFillColor(29,31,34);doc.rect(M+16,K.y,3.2,3.2,"F");doc.text("Handover",M+20.6,K.y+2.7);K.y+=6;
+  const cw=CW/7,start=rpMon(C.a),weeks=[];for(let k=start;k<=C.b;k=shift(k,7))weeks.push(k);
+  const ch=Math.min(30,(281-K.y-6)/weeks.length);
+  font("bold",6.5);col([119,119,119]);["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach((w,i)=>doc.text(w.toUpperCase(),M+i*cw+2,K.y+3));
+  doc.setDrawColor(29,31,34);doc.setLineWidth(.4);doc.line(M,K.y+4.6,M+CW,K.y+4.6);K.y+=4.6;
+  weeks.forEach(w=>{for(let i=0;i<7;i++){const k=shift(w,i),x=M+i*cw,inM=k>=C.a&&k<=C.b;
+      if(!inM){doc.setFillColor(250,250,250);doc.rect(x,K.y,cw,ch,"F")}
+      doc.setDrawColor(235,235,235);doc.setLineWidth(.2);doc.rect(x,K.y,cw,ch,"S");
+      font("bold",7);col(inM?K.INK:[150,150,150]);doc.text(String(Number(k.slice(8))),x+1.5,K.y+3.2);
+      if(!inM)continue;let yy=K.y+4.6;const evs=C.ev.filter(e=>e.k===k);let shown=0;
+      for(const e of evs){font("normal",6);const L=K.split(e.t,cw-3).slice(0,2),hh=2.7+L.length*2.5+1;if(yy+hh>K.y+ch-.5)break;
+        const pour=e.type==="Pour";doc.setFillColor(pour?255:29,pour?49:31,pour?49:34);doc.rect(x+.8,yy,cw-1.6,hh,"F");
+        font("bold",6.3);col(pour?K.INK:[255,255,255]);doc.text(e.type,x+1.5,yy+2.4);font("normal",6);L.forEach((l,j)=>doc.text(l,x+1.5,yy+4.9+j*2.5));yy+=hh+.8;shown++}
+      if(evs.length>shown){font("bold",6);col(K.INK);doc.text(`+${evs.length-shown} more`,x+1.5,Math.min(yy+2.2,K.y+ch-.8))}}
+    K.y+=ch});
+  K.y+=6;K.secK("All pours and handovers");
+  if(C.ev.length)K.table([{h:"Date",w:.18},{h:"Type",w:.18},{h:"Detail",w:.64}],C.ev.sort((p,q)=>p.k.localeCompare(q.k)).map(e=>[rpDM(e.k),e.type==="Pour"?"Concrete pour":"Handover",e.t]));else K.none();
+  return K.finish(rpFooter(RPT.calendar.name,C.a,C.b,rpMonthName(C.a)))}
+function textCalendar(m){const C=rpCalData(m),L=[RPT.calendar.name.toUpperCase(),rpMonthName(C.a),`Project: ${DEFAULTS.project}`,
+  `Concrete pours: ${C.P.length}   Handovers: ${C.H.length}   Last pour: ${C.lastP?rpDM(C.lastP):"-"}   Last handover: ${C.lastH?rpDM(C.lastH):"-"}`,"","ALL POURS AND HANDOVERS"];
+  if(C.ev.length)C.ev.sort((p,q)=>p.k.localeCompare(q.k)).forEach(e=>L.push(`  ${rpDM(e.k)} | ${e.type==="Pour"?"Concrete pour":"Handover"} | ${e.t}`));else L.push("  None recorded");
+  return L.join("\n")}
+
+/* ---------- Reports screens ---------- */
+let rp={kind:"weekly",from:"",to:"",fresh:false,m:"",month:"",sel:null,selKey:"",tag:"All",incPh:false,roles:true};
+function reportsMenu(){
+  sheet("Reports",`<div class="empty">Reports only read your diary. They never change a day or a register item. Only days that are completed or in progress are included.</div>
+    <div class="reg-list">${Object.entries(RPT).map(([k,r])=>`<button type="button" class="reg-row" data-rk="${k}"><span class="t"><b>${esc(r.short)}</b></span><span class="ds" style="font-size:14px;color:var(--muted)">${esc(r.desc)}</span></button>`).join("")}</div>`,null,null,b=>{
+    b.querySelectorAll("[data-rk]").forEach(x=>x.onclick=()=>openReport(x.dataset.rk))});
+}
+function openReport(kind){const t=iso(new Date());rp.kind=kind;rp.fresh=false;rp.sel=null;rp.tag="All";rp.incPh=false;
+  if(kind==="weekly"){rp.from=rpMon(t);rp.to=shift(rp.from,6)}else{rp.from=t.slice(0,7)+"-01";rp.to=t}
+  rp.m=rp.from.slice(0,7);rp.month=t.slice(0,7);reportSheet()}
+function reportSheet(msgText){
+  const k=rp.kind,R=RPT[k],t=iso(new Date());let body="";
+  if(k==="calendar"){const C=rpCalData(rp.month);
+    body=`<div class="calnav"><button type="button" id="xp" aria-label="Previous month">&lsaquo;</button><b>${esc(rpMonthName(rp.month+"-01"))}</b><button type="button" id="xn" aria-label="Next month">&rsaquo;</button></div>
+      <div class="empty"><b>${C.P.length} pour${C.P.length===1?"":"s"} and ${C.H.length} handover${C.H.length===1?"":"s"}</b> recorded this month.</div>`;
+  }else{
+    const [y,m]=rp.m.split("-").map(Number),first=new Date(y,m-1,1),lead=(first.getDay()+6)%7,n=new Date(y,m,0).getDate(),lo=rp.from,hi=rp.to||rp.from;
+    let cells="";for(let i=0;i<lead;i++)cells+='<span class="x"></span>';
+    for(let dd=1;dd<=n;dd++){const kk=`${y}-${String(m).padStart(2,"0")}-${String(dd).padStart(2,"0")}`,st=dayStatus(kk),inr=lo&&kk>=lo&&kk<=hi,edge=kk===lo||kk===hi;
+      cells+=`<button type="button" data-k="${kk}" class="${st} ${kk===t?"today":""} ${inr?"inr":""} ${edge?"edge":""}" aria-label="${esc(nice(kk))}">${st!=="blank"?`<i class="dot ${st}"></i>`:""}${dd}</button>`}
+    const nd=rp.from?rpDays(rp.from,rp.to||rp.from).length:0;
+    const info=rp.fresh?`${rpDM(rp.from)} is selected. Now tap the last day, or make the report for just this day.`:`${rpDM(rp.from)} to ${rpDM(rp.to||rp.from)}: ${nd} day${nd===1?"":"s"} with a diary.`;
+    body=`<div class="calnav"><button type="button" id="xp" aria-label="Previous month">&lsaquo;</button><b>${esc(first.toLocaleDateString("en-AU",{month:"long",year:"numeric"}))}</b><button type="button" id="xn" aria-label="Next month">&rsaquo;</button></div>
+      <div class="cal ex">${["Mo","Tu","We","Th","Fr","Sa","Su"].map(x=>`<div class="h">${x}</div>`).join("")}${cells}</div>
+      <div class="legend"><span><i style="background:var(--ok);border-radius:50%"></i>Completed</span><span><i style="background:var(--wip);border-radius:50%"></i>In progress</span><span><i style="background:rgba(255,49,49,.78)"></i>In the report</span></div>
+      <div class="empty" style="margin:2px 0"><b>${esc(info)}</b> Tap a first day, then a last day.</div>`;
+    if(k==="weekly")body+=`<div id="rpPh"></div>`;
+    if(k==="delays"||k==="variations")body+=`<label class="chk"><input type="checkbox" id="rpInc" ${rp.incPh?"checked":""}>Include photos (extra pages)</label>`;
+    if(k==="manpower")body+=`<label class="chk"><input type="checkbox" id="rpRoles" ${rp.roles?"checked":""}>Include manpower by role</label>`;
+  }
+  body+=`<div class="btns"><button class="btn primary" id="rpMk" type="button">Make PDF</button><button class="btn" id="rpTx" type="button">Copy as text</button><button class="btn" id="rpBack" type="button">All reports</button></div>
+    <div id="msg" class="empty">${esc(msgText||"")}</div>`;
+  sheet(R.short,body,null,null,b=>{
+    const q=s=>b.querySelector(s);
+    q("#rpBack").onclick=reportsMenu;
+    if(k==="calendar"){const mv=d=>{const [y,m]=rp.month.split("-").map(Number),dt=new Date(y,m-1+d,1);rp.month=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;reportSheet()};
+      q("#xp").onclick=()=>mv(-1);q("#xn").onclick=()=>mv(1)}
+    else{const [y,m]=rp.m.split("-").map(Number);const mv=d=>{const dt=new Date(y,m-1+d,1);rp.m=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;reportSheet()};
+      q("#xp").onclick=()=>mv(-1);q("#xn").onclick=()=>mv(1);
+      b.querySelectorAll("[data-k]").forEach(x=>x.onclick=()=>{const kk=x.dataset.k;
+        if(!rp.fresh){rp.from=kk;rp.to=kk;rp.fresh=true}else{if(kk<rp.from){rp.to=rp.from;rp.from=kk}else rp.to=kk;rp.fresh=false}
+        rp.sel=null;reportSheet()});
+      if(q("#rpInc"))q("#rpInc").onchange=e=>rp.incPh=e.target.checked;
+      if(q("#rpRoles"))q("#rpRoles").onchange=e=>rp.roles=e.target.checked;
+      if(k==="weekly")drawPhotoPicker(q("#rpPh"))}
+    const range=()=>[rp.from,rp.to||rp.from];
+    q("#rpTx").onclick=async()=>{const [a,z]=range();const txt=k==="weekly"?textWeekly(a,z,pickedPhotos()):k==="delays"?textDelays(a,z):k==="variations"?textVariations(a,z):k==="manpower"?textManpower(a,z,rp.roles):textCalendar(rp.month);
+      try{await navigator.clipboard.writeText(txt);toast("Copied")}catch(e){q("#msg").outerHTML=`<pre>${esc(txt)}</pre>`}};
+    q("#rpMk").onclick=async()=>{const mm=q("#msg"),[a,z]=range();mm.textContent="Building the PDF";
+      try{let blob,fn;
+        if(k==="weekly"){const all=rpPhotos(a,z),ph=pickedPhotos();blob=await buildWeekly(a,z,all.length?ph:null);fn=`weekly-report-${a}_to_${z}.pdf`}
+        else if(k==="delays"){blob=await buildDelays(a,z,rp.incPh);fn=`delay-register-${a}_to_${z}.pdf`}
+        else if(k==="variations"){blob=await buildVariations(a,z,rp.incPh);fn=`variations-register-${a}_to_${z}.pdf`}
+        else if(k==="manpower"){blob=await buildManpower(a,z,rp.roles);fn=`manpower-crane-${a}_to_${z}.pdf`}
+        else{blob=await buildCalendar(rp.month);fn=`pours-handovers-${rp.month}.pdf`}
+        offerPdf(mm,blob,fn)}catch(e){console.error(e);mm.textContent="Couldn't make the PDF. Try again, or use Copy as text."}};
+  });
+}
+/* weekly report: choose photos (first 8 ticked), filter the choice by tag */
+function pickedPhotos(){const all=rpPhotos(rp.from,rp.to||rp.from);ensureSel(all);return all.filter(x=>rp.sel.has(x.p.id))}
+function ensureSel(all){const key=(rp.from||"")+"|"+(rp.to||"");if(!rp.sel||rp.selKey!==key){rp.sel=new Set(all.slice(0,8).map(x=>x.p.id));rp.selKey=key}}
+function drawPhotoPicker(box){if(!box)return;const all=rpPhotos(rp.from,rp.to||rp.from);ensureSel(all);
+  if(!all.length){box.innerHTML='<div class="lbl">Photos</div><div class="empty">No photos in this range.</div>';return}
+  const tags=["All",...new Set(all.map(x=>x.tag))],shown=all.filter(x=>rp.tag==="All"||x.tag===rp.tag);
+  box.innerHTML=`<div class="lbl">Photos for page 2 <span style="font-weight:400">(${rp.sel.size} of ${all.length} ticked)</span></div>
+    <div class="chips" style="margin-bottom:8px">${tags.map(t=>`<button type="button" class="chip" data-tg="${esc(t)}" aria-pressed="${rp.tag===t}">${esc(t)}</button>`).join("")}</div>
+    <div class="rp-pick">${shown.map(x=>`<label class="rp-ph"><input type="checkbox" data-ps="${esc(x.p.id)}" ${rp.sel.has(x.p.id)?"checked":""}><img data-pp="${esc(x.p.id)}" alt="${esc(x.caption||"Photo")}"><span>${esc(rpD(x.date))} · ${esc(x.tag)}</span></label>`).join("")}</div>
+    <div class="btns" style="margin-top:6px"><button type="button" class="btn" id="rpAll" style="min-height:38px">Tick all shown</button><button type="button" class="btn" id="rpNone" style="min-height:38px">Untick all</button></div>`;
+  box.querySelectorAll("[data-tg]").forEach(b=>b.onclick=()=>{rp.tag=b.dataset.tg;drawPhotoPicker(box)});
+  box.querySelectorAll("[data-ps]").forEach(c=>c.onchange=()=>{if(c.checked)rp.sel.add(c.dataset.ps);else rp.sel.delete(c.dataset.ps);box.querySelector(".lbl span").textContent=`(${rp.sel.size} of ${all.length} ticked)`});
+  box.querySelector("#rpAll").onclick=()=>{shown.forEach(x=>rp.sel.add(x.p.id));drawPhotoPicker(box)};
+  box.querySelector("#rpNone").onclick=()=>{rp.sel.clear();drawPhotoPicker(box)};
+  box.querySelectorAll("[data-pp]").forEach(im=>{const x=all.find(z=>z.p.id===im.dataset.pp);if(x)photoURL(x.p).then(u=>{im.src=u}).catch(()=>{})});
+}
+
 let exFrom="",exTo="",exM="",exFresh=false;
 function exportIds(){
   if(!exFrom)return [];
@@ -1436,6 +1826,7 @@ function exportSheet(msgText){
   });
 }
 $("#regBtn").onclick=()=>{if(view==="reg"){$("#regBack")&&$("#regBack").click();return}view="reg";render();scrollTo(0,0)};
+$("#rptBtn").onclick=reportsMenu;
 $("#pdfBtn").onclick=()=>{exFrom=cur;exTo="";exFresh=true;exM=cur.slice(0,7);exportSheet()};
 
 /* ---------- log in / log out ---------- */

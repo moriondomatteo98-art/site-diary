@@ -252,6 +252,45 @@ label.rp-ph{position:relative;display:block;border-radius:6px;overflow:hidden;ba
 .rp-ph img{width:100%;aspect-ratio:4/3;object-fit:contain;background:#e9edf0;border-radius:4px;cursor:zoom-in}
 .rp-ph figcaption{font-size:12.5px;overflow-wrap:anywhere}.rp-ph figcaption b{color:#ff3131}
 .rp-ft{border-top:1px solid #e4e4e4;padding-top:6px;font-size:11px;color:#888}
+/* Reports on screen */
+.top button#rptBtn.cur{background:#0b0b0b;color:#fff}
+.rv-page{gap:16px}
+.rv-tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -2px}
+.rp-t.rv{table-layout:auto;min-width:100%}
+.rp-t.rv th:first-child,.rp-t.rv td:first-child{width:auto}
+.rp-t.rv th,.rp-t.rv td{vertical-align:top;overflow-wrap:normal;word-break:normal}
+.rp-t.rv .nw{white-space:nowrap}
+.rp-t.rv .r{text-align:right}
+.rp-t.rv td.mu{color:#969696}
+.rp-t.rv tfoot td{font-weight:700;border-bottom:1.5px solid #1d1f22}
+.rp-lv{display:inline-block;color:#fff;font:700 10px var(--body);border-radius:4px;padding:2px 6px;white-space:nowrap}
+.rv-ch{padding:16px 0 0 24px}
+.rv-in{position:relative;height:120px;border-bottom:1px solid #1d1f22;display:flex;align-items:flex-end}
+.rv-g{position:absolute;left:0;right:0;border-top:1px solid #ececec}
+.rv-g span{position:absolute;left:-24px;top:-7px;width:20px;text-align:right;font-size:9px;color:#777}
+.rv-avg{position:absolute;left:0;right:0;border-top:1.5px dashed #787878;z-index:3}
+.rv-avg span{position:absolute;right:0;top:-15px;font-size:10px;background:#fff;padding:0 3px;color:#1d1f22}
+.rv-b{flex:1;height:100%;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative;z-index:2}
+.rv-b.gp,.rv-xl span.gp{margin-left:6px}
+.rv-b i{display:block;width:55%;max-width:14px;border-radius:3px 3px 0 0}
+.rv-b em{font:700 10px var(--body);color:#1d1f22;min-height:13px}
+.rv-xl{display:flex;margin-left:24px;padding-top:3px}
+.rv-xl span{flex:1;min-width:0;font-size:9px;text-align:center;white-space:nowrap;overflow:visible}
+.rv-hb{display:grid;grid-template-columns:minmax(0,40%) 1fr auto;gap:6px 8px;align-items:center;font-size:13px}
+.rv-hb i{display:block;height:10px;background:#ff3131;border-radius:0 3px 3px 0}
+.rv-hb .r{text-align:right}
+.rv-lg{display:flex;gap:14px;font-size:12px;flex-wrap:wrap;margin-bottom:6px}
+.rv-lg i{display:inline-block;width:11px;height:11px;margin-right:5px;vertical-align:-1px}
+.rv-cg{display:grid;grid-template-columns:44px repeat(13,minmax(0,1fr));gap:2px;font-size:10px;align-items:center}
+.rv-cg .h{font-size:8.5px;color:#777;text-align:center}
+.rv-cg i{display:block;height:12px;background:#f4f4f4}.rv-cg i.on{background:#ff3131}
+.rv-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-left:1px solid #ebebeb;border-top:1px solid #ebebeb}
+.rv-cal>span.h{font:700 9px var(--body);text-transform:uppercase;color:#777;padding:3px;border-right:1px solid #ebebeb;border-bottom:1.5px solid #1d1f22}
+.rv-cal>div{min-height:62px;border-right:1px solid #ebebeb;border-bottom:1px solid #ebebeb;padding:2px;font-size:10px;min-width:0;overflow:hidden}
+.rv-cal>div.out{background:#fafafa;color:#aaa}
+.rv-ck{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;margin-top:2px;padding:1px 2px;font-size:8.5px;line-height:1.2;overflow-wrap:anywhere}
+.rv-ck b{display:block;font-size:8px;overflow-wrap:normal;word-break:keep-all;white-space:nowrap;overflow:hidden;text-overflow:clip}
+.rv-ck.p{background:#ff3131;color:#1d1f22}.rv-ck.h{background:#1d1f22;color:#fff}
 </style>
 </head>
 <body>
@@ -364,7 +403,7 @@ const PROJ_KEYS=["builder","project","address"];
 function applyProj(){Object.values(days).forEach(x=>{if(x&&typeof x==="object")PROJ_KEYS.forEach(k=>{x[k]=DEFAULTS[k]})})}
 function setProj(v){if(v&&typeof v==="object")PROJ_KEYS.forEach(k=>{if(typeof v[k]==="string")DEFAULTS[k]=v[k]})}
 /* Supabase connection. The publishable (anon) key is safe in the browser: Row Level Security only lets the owner's account read or write. */
-const APP_VERSION="v16";
+const APP_VERSION="v17";
 const SB_URL="https://atvukmvzjnyyvblrjorx.supabase.co";
 const SB_KEY="sb_publishable_7qcokDz_vp1NiFugeHNfxQ_ancigAFg";
 const AUTH_KEY="siteDiary.auth";
@@ -792,7 +831,7 @@ const regLineOngoing=x=>`${refLabel("d",x)} since ${shortDay(x.start_date)}${x.s
 
 /* --- registers screen --- */
 function renderRegisters(){
-  const r2=document.querySelector(".top .r2");if(r2)r2.hidden=true;if($("#bar"))$("#bar").hidden=true;$("#regBtn").classList.add("cur");
+  const r2=document.querySelector(".top .r2");if(r2)r2.hidden=true;if($("#bar"))$("#bar").hidden=true;$("#regBtn").classList.add("cur");$("#rptBtn").classList.remove("cur");
   const k=regTab,sts=k==="d"?DELAY_STATUS:VAR_STATUS;
   $("#app").innerHTML=`<div class="status"><span class="dot" id="dot"></span><span id="statusTxt"></span><button class="btn" id="regBack" type="button" style="margin-left:auto;min-height:40px">&lsaquo; Back to diary</button></div>
     <h1 class="regh">Registers</h1>
@@ -987,6 +1026,7 @@ function flushTyped(){document.querySelectorAll("#app [data-li]").forEach(i=>{co
   if(t&&x){x[f]=[...items(x[f]),t.replace(/\s*\n\s*/g," ")].join("\n");i.value="";markDay(k);saveLocal();soon()}})}
 function render(){flushTyped();
   if(view==="reg"){renderRegisters();return}
+  if(view==="report"){renderReportView();return}
   $("#date").textContent=new Date(cur+"T12:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
   renderDetails();
 }
@@ -1708,6 +1748,118 @@ function textCalendar(m){const C=rpCalData(m),L=[RPT.calendar.name.toUpperCase()
   if(C.ev.length)C.ev.sort((p,q)=>p.k.localeCompare(q.k)).forEach(e=>L.push(`  ${rpDM(e.k)} | ${e.type==="Pour"?"Concrete pour":"Handover"} | ${e.t}`));else L.push("  None recorded");
   return L.join("\n")}
 
+/* ---------- Reports on screen (same data as the PDFs, phone layout, read-only) ---------- */
+function reportText(){const k=rp.kind,a=rp.from,z=rp.to||rp.from;
+  return k==="weekly"?textWeekly(a,z,pickedPhotos()):k==="delays"?textDelays(a,z):k==="variations"?textVariations(a,z):k==="manpower"?textManpower(a,z,rp.roles):textCalendar(rp.month)}
+async function reportPdf(mm){const k=rp.kind,a=rp.from,z=rp.to||rp.from;mm.textContent="Building the PDF";
+  try{let blob,fn;
+    if(k==="weekly"){const all=rpPhotos(a,z),ph=pickedPhotos();blob=await buildWeekly(a,z,all.length?ph:null);fn=`weekly-report-${a}_to_${z}.pdf`}
+    else if(k==="delays"){blob=await buildDelays(a,z,rp.incPh);fn=`delay-register-${a}_to_${z}.pdf`}
+    else if(k==="variations"){blob=await buildVariations(a,z,rp.incPh);fn=`variations-register-${a}_to_${z}.pdf`}
+    else if(k==="manpower"){blob=await buildManpower(a,z,rp.roles);fn=`manpower-crane-${a}_to_${z}.pdf`}
+    else{blob=await buildCalendar(rp.month);fn=`pours-handovers-${rp.month}.pdf`}
+    offerPdf(mm,blob,fn)}catch(e){console.error(e);mm.textContent="Couldn't make the PDF. Try again, or use Copy as text."}}
+async function reportCopy(where){const txt=reportText();try{await navigator.clipboard.writeText(txt);toast("Copied")}catch(e){where.innerHTML=`<pre>${esc(txt)}</pre>`}}
+
+const rvNone='<div class="rp-e">None recorded</div>';
+const rvSec=(t,body)=>`<div class="rp-sec"><h3>${esc(t)}</h3>${body}</div>`;
+const rvBox=t=>{t=String(t||"").trim();return `<div class="rp-box">${t?esc(t):'<span class="rp-e">None recorded</span>'}</div>`};
+const rvHead=(t,sub)=>`<div class="rp-hd"><img src="${LOGO}" alt="Transform Group"><img src="${HFULL}" alt="Hindmarsh"></div><div class="rp-rule"></div>
+  <div class="rp-ti"><div><h2>${esc(t)}</h2><div class="rp-sub">${esc(sub)}</div></div></div>`;
+const rvGrid=cells=>`<div class="rp-grid">${[{l:"Builder",v:DEFAULTS.builder},{l:"Project",v:DEFAULTS.project},{l:"Address",v:DEFAULTS.address,w:1},...cells].map(c=>`<div class="rp-c${c.w?" w":""}"><span>${esc(c.l)}</span><b>${esc(c.v==null||c.v===""?"-":String(c.v))}</b></div>`).join("")}</div>`;
+function rvTable(cols,rows,total){
+  const cell=(v,c)=>{const o=v&&typeof v==="object"?v:{t:v},t=o.t==null||o.t===""?"-":String(o.t);
+    if(o.pill)return `<td><span class="rp-lv" style="background:rgb(${o.pill.join(",")})">${esc(t.toUpperCase())}</span></td>`;
+    return `<td class="${c.a==="r"?"r":""}${o.muted?" mu":""}${c.nw?" nw":""}" style="${c.min?`min-width:${c.min}px;`:""}${o.bold?"font-weight:700;":""}${o.color?`color:rgb(${o.color.join(",")})`:""}">${esc(t).replace(/\n/g,"<br>")}</td>`};
+  let foot="";if(total){const first=Math.min(cols.length,...Object.keys(total.cells||{}).map(Number));
+    foot=`<tfoot><tr><td colspan="${Math.max(1,first)}">${esc(total.label)}</td>${cols.slice(Math.max(1,first)).map((c,i)=>{const v=(total.cells||{})[i+Math.max(1,first)];return `<td class="${c.a==="r"?"r":""}">${v==null?"":esc(v)}</td>`}).join("")}</tr></tfoot>`}
+  return `<div class="rv-tw"><table class="rp-t rv"><thead><tr>${cols.map(c=>`<th class="${c.a==="r"?"r":""}${c.nw?" nw":""}">${esc(c.h)}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((v,i)=>cell(v,cols[i])).join("")}</tr>`).join("")}</tbody>${foot}</table></div>`}
+function rvBars(data,color,fmt){if(!data.length)return rvNone;
+  const vmax=Math.max(0,...data.map(d=>d.v));let step=1;const raw=Math.max(vmax,1)/4;for(const s of [1,2,5,10,20,25,50,100]){step=s;if(s>=raw)break}
+  const ymax=Math.max(step,Math.ceil(vmax/step)*step),pct=v=>(v/ymax*100).toFixed(2)+"%",avg=data.reduce((s,d)=>s+d.v,0)/data.length,every=Math.ceil(data.length/8);
+  let ticks="";for(let v=0;v<=ymax+1e-9;v+=step)ticks+=`<div class="rv-g" style="bottom:${pct(v)}"><span>${v}</span></div>`;
+  let peak=false;const bars=data.map(d=>{const lab=vmax>0&&d.v===vmax&&!peak?(peak=true,fmt(d.v)):"";
+    return `<div class="rv-b${d.gap?" gp":""}"><em>${esc(lab)}</em><i style="height:${pct(d.v)};background:${color}"></i></div>`}).join("");
+  const xl=data.map((d,i)=>`<span class="${d.gap?"gp":""}">${i%every===0?esc(d.label):""}</span>`).join("");
+  return `<div class="rv-ch"><div class="rv-in">${ticks}${avg>0?`<div class="rv-avg" style="bottom:${pct(avg)}"><span>Avg ${esc(fmt(avg))}</span></div>`:""}${bars}</div></div><div class="rv-xl">${xl}</div>`}
+function rvPhotos(list){return `<div class="rp-ph">${list.map(x=>`<figure><img data-pid="${esc(x.p.id)}" alt="${esc(x.caption||"Photo")}"><figcaption><b>${esc(x.head[0])}</b>${x.head.slice(1).filter(Boolean).map(s=>" · "+esc(s)).join("")}<br>${esc(x.text||"")}</figcaption></figure>`).join("")}</div>`}
+const rvFoot=(name,label)=>`<div class="rp-ft">${esc(name)} | ${esc(DEFAULTS.builder)} | ${esc(DEFAULTS.project)} | ${esc(label)}</div>`;
+
+function htmlWeekly(a,b){const W=rpWeeklyData(a,b),all=rpPhotos(a,b),ph=pickedPhotos();
+  const act=W.inc.filter(k=>items(W.D[k].activity).length||W.D[k].areas);
+  const lines=(arr)=>arr.map(p=>`${rpD(p.k)}: ${p.t}`).join("\n");
+  return rvHead(RPT.weekly.name,rpRangeText(a,b))
+   +rvGrid([{l:"Days reported",v:`${W.inc.length} of ${W.all.length}`},{l:"Deliveries",v:W.deliveries},{l:"Crane hours",v:W.crane},{l:"Concrete pours",v:W.pours.length}])
+   +rvSec("Days at a glance",rvTable([{h:"Day"},{h:"Weather"},{h:"Hours",a:"r",nw:1},{h:"Men",a:"r",nw:1},{h:"Crane",a:"r",nw:1},{h:"Status"}],rpGlanceRows(W).map(r=>{const c=r[0],f=t=>String(t).replace(/(\w{3}) (\d+)/g,"$1\u00a0$2");r[0]=c&&typeof c==="object"?{...c,t:f(c.t)}:f(c);return r})))
+   +rvSec("Activities by day",act.length?rvTable([{h:"Day",nw:1},{h:"Areas",min:60},{h:"Site activity",min:150}],act.map(k=>[rpD(k),W.D[k].areas||"-",items(W.D[k].activity).join("\n")||"-"])):rvNone)
+   +`<div class="rp-two">${rvSec("Concrete pour",rvBox(lines(W.pours)))}${rvSec("Deck and verticals handover",rvBox(lines(W.hands)))}</div>`
+   +rvSec("Delays",rvBox(W.delays.map(rpDelayLine).join("\n")))
+   +`<div class="rp-two">${rvSec("Variations raised",rvBox(W.vars.map(rpVarLine).join("\n")))}${rvSec("Accidents / injuries",rvBox(lines(W.acc)))}</div>`
+   +(all.length?(ph.length?rvSec(`Photos (${ph.length})`,rvPhotos(ph.map(x=>({p:x.p,head:[x.tag,x.area,rpD(x.date)],text:x.caption})))):""):rvSec("Photos",rvNone))
+   +rvFoot(RPT.weekly.name,rpShortRange(a,b))}
+function htmlDelays(a,b){const R=rpDelayData(a,b);let ph=[];
+  if(rp.incPh)R.L.forEach(x=>(x.photos||[]).forEach(p=>ph.push({p,head:[refLabel("d",x),x.area,rpD(x.start_date)],text:p.caption||x.description||""})));
+  const maxC=Math.max(0,...R.causes.map(c=>c.v));
+  return rvHead(RPT.delays.name,rpRangeText(a,b))
+   +rvGrid([{l:"Delays recorded",v:R.L.length},{l:"Hours lost",v:rpNum(R.hrs)},{l:"Still ongoing",v:R.ongoing},{l:"Weather delays",v:R.weather}])
+   +rvSec("All delays",R.L.length?rvTable([{h:"Ref",nw:1},{h:"Date",nw:1},{h:"Time",nw:1},{h:"Description",min:170},{h:"Area",nw:1},{h:"Cause",min:80},{h:"Hrs",a:"r",nw:1},{h:"Photos",a:"r",nw:1}],
+      R.L.map(x=>[refLabel("d",x),rpDM(x.start_date),x.start_time||"-",x.description,x.area||"-",x.cause||"-",x.status==="Ongoing"?{t:"Ongoing",bold:1,color:[217,52,43]}:rpHrsText(x),String((x.photos||[]).length)]),
+      {label:"Total hours lost (excluding ongoing)",cells:{6:rpNum(R.hrs)}}):rvNone)
+   +rvSec("Hours lost by cause",R.causes.length?`<div class="rv-hb">${R.causes.map(c=>`<span>${esc(c.label)}</span>${c.v>0||!c.on?`<span><i style="width:${maxC?Math.max(2,c.v/maxC*100):2}%"></i></span><span class="r">${rpNum(c.v)}</span>`:`<span style="color:#d9342b;font-weight:700">Ongoing</span><span class="r">-</span>`}`).join("")}</div>`:rvNone)
+   +rvSec("Hours lost by week",R.weeks.length?rvTable([{h:"Week starting",nw:1},{h:"Delays",a:"r",nw:1},{h:"Hrs",a:"r",nw:1}],R.weeks.map(w=>[rpDM(w.w),String(w.n),rpNum(w.h)]),{label:"Total",cells:{1:String(R.L.length),2:rpNum(R.hrs)}}):rvNone)
+   +(rp.incPh?rvSec("Delay photos",ph.length?rvPhotos(ph):rvNone):"")
+   +rvFoot(RPT.delays.name,rpShortRange(a,b))}
+function htmlVariations(a,b){const L=rpVarsIn(a,b);let ph=[];
+  if(rp.incPh)L.forEach(x=>(x.photos||[]).forEach(p=>ph.push({p,head:[refLabel("v",x),x.area,rpD(x.raised_date)],text:p.caption||x.description||""})));
+  return rvHead(RPT.variations.name,rpRangeText(a,b))
+   +rvGrid([{l:"Variations",v:L.length},...VAR_STATUS.map(s=>({l:s,v:L.filter(x=>x.status===s).length}))])
+   +rvSec("All variations",L.length?rvTable([{h:"Ref",nw:1},{h:"Date",nw:1},{h:"Description",min:160},{h:"Area",nw:1},{h:"Status",nw:1},{h:"Photos",a:"r",nw:1}],
+      L.map(x=>[refLabel("v",x),rpDM(x.raised_date),x.description+(x.reference?` (${x.reference})`:""),x.area||"-",{t:x.status,pill:VPILL[x.status]||[120,120,120]},String((x.photos||[]).length)]),
+      {label:`Total variations: ${L.length}`,cells:{}}):rvNone)
+   +(rp.incPh?rvSec("Variation photos",ph.length?rvPhotos(ph):rvNone):"")
+   +rvFoot(RPT.variations.name,rpShortRange(a,b))}
+function htmlManpower(a,b){const R=rpManData(a,b);
+  const lab=["5a","6a","7a","8a","9a","10a","11a","12p","1p","2p","3p","4p","5p"];
+  const grid=R.n?`<div class="rv-lg"><span><i style="background:#ff3131"></i>Crane on site</span><span><i style="background:#f4f4f4;border:1px solid #e1e1e1"></i>Not used</span></div>
+    <div class="rv-cg"><span></span>${lab.map(h=>`<span class="h">${h}</span>`).join("")}${R.D.map(x=>`<span>${esc(rpD(x.k))}</span>${SLOTS.map(s=>`<i class="${(x.d.craneHrs||[]).includes(s)?"on":""}"></i>`).join("")}`).join("")}</div>
+    <div style="font-size:13px;margin-top:6px">${esc(rpBusiest(R))}</div>`:rvNone;
+  return rvHead(RPT.manpower.name,rpRangeText(a,b))
+   +rvGrid([{l:"Avg total men",v:rpNum(R.avgM)},{l:"Peak total men",v:R.pkDay?`${R.pk} (${rpD(R.pkDay)})`:"0"},{l:"Crane hours",v:R.totC},{l:"Avg crane hrs/day",v:rpNum(R.avgC)}])
+   +rvSec("Total men on site per day",R.n?rvBars(rpBarData(R,R.men),"#1d1f22",rpNum):rvNone)
+   +rvSec("Crane hours per day",R.n?rvBars(rpBarData(R,R.cr),"#ff3131",rpNum):rvNone)
+   +rvSec("Hours the crane was on site",grid)
+   +(rp.roles?rvSec("Manpower by role",R.roles.length?rvTable([{h:"Role",min:90},{h:"Man-days",a:"r",nw:1},{h:"Avg/day",a:"r",nw:1},{h:"Peak",a:"r",nw:1}],R.roles.map(x=>[x.r,String(x.sum),rpNum(x.sum/R.n),String(x.peak)]),
+      {label:"All roles",cells:{1:String(R.men.reduce((s,v)=>s+v,0)),2:rpNum(R.avgM),3:String(R.pk)}}):rvNone):"")
+   +rvFoot(RPT.manpower.name,rpShortRange(a,b))}
+function htmlCalendar(m){const C=rpCalData(m),start=rpMon(C.a);let cells="";
+  for(let k=start;k<=C.b||new Date(k+"T12:00:00").getDay()!==1;k=shift(k,1)){const inM=k>=C.a&&k<=C.b,ev=inM?C.ev.filter(e=>e.k===k):[];
+    cells+=`<div class="${inM?"":"out"}"><b>${Number(k.slice(8))}</b>${ev.map(e=>`<span class="rv-ck ${e.type==="Pour"?"p":"h"}"><b>${e.type}</b> ${esc(e.t)}</span>`).join("")}</div>`}
+  const list=C.ev.slice().sort((p,q)=>p.k.localeCompare(q.k));
+  return rvHead(RPT.calendar.name,rpMonthName(C.a))
+   +rvGrid([{l:"Concrete pours",v:C.P.length},{l:"Handovers",v:C.H.length},{l:"Last pour",v:C.lastP?rpDM(C.lastP):"-"},{l:"Last handover",v:C.lastH?rpDM(C.lastH):"-"}])
+   +rvSec("Calendar",`<div class="rv-lg"><span><i style="background:#ff3131"></i>Pour</span><span><i style="background:#1d1f22"></i>Handover</span></div>
+      <div class="rv-cal">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>`<span class="h">${d}</span>`).join("")}${cells}</div>`)
+   +rvSec("All pours and handovers",list.length?rvTable([{h:"Date",nw:1},{h:"Type",nw:1},{h:"Detail",min:130}],list.map(e=>[rpDM(e.k),e.type==="Pour"?"Concrete pour":"Handover",e.t])):rvNone)
+   +rvFoot(RPT.calendar.name,rpMonthName(C.a))}
+
+function viewReport(){try{$("#dlg").close()}catch(e){}view="report";render();scrollTo(0,0)}
+function leaveReport(){view="home";$("#rptBtn").classList.remove("cur");const r=document.querySelector(".top .r2");if(r)r.hidden=false;render();scrollTo(0,0)}
+function renderReportView(){
+  const r2=document.querySelector(".top .r2");if(r2)r2.hidden=true;if($("#bar"))$("#bar").hidden=true;$("#regBtn").classList.remove("cur");$("#rptBtn").classList.add("cur");
+  const k=rp.kind,a=rp.from,z=rp.to||rp.from;let html="";
+  try{html=k==="weekly"?htmlWeekly(a,z):k==="delays"?htmlDelays(a,z):k==="variations"?htmlVariations(a,z):k==="manpower"?htmlManpower(a,z):htmlCalendar(rp.month)}
+  catch(e){console.error(e);html='<div class="empty">Couldn\'t show this report.</div>'}
+  $("#app").innerHTML=`<div class="status"><span class="dot" id="dot"></span><span id="statusTxt"></span><button class="btn" id="rvBack" type="button" style="margin-left:auto;min-height:40px">&lsaquo; Back to diary</button></div>
+    <div class="btns"><button class="btn primary" id="rvPdf" type="button">Make PDF</button><button class="btn" id="rvTx" type="button">Copy as text</button><button class="btn" id="rvCh" type="button">Change dates</button></div>
+    <div id="rvMsg" class="empty"></div>
+    <article class="rp rv-page" aria-label="${esc(RPT[k].name)}">${html}</article>`;
+  $("#rvBack").onclick=leaveReport;$("#rvCh").onclick=()=>reportSheet();
+  $("#rvPdf").onclick=()=>reportPdf($("#rvMsg"));$("#rvTx").onclick=()=>reportCopy($("#rvMsg"));
+  fillPhotos($("#app"));
+  $("#app").querySelectorAll(".rp-ph img").forEach(im=>im.onclick=()=>{if(im.src)sheet("",`<img class="pv" src="${esc(im.src)}" alt=""><div>${esc(im.alt)}</div>`,null)});
+  status(...(status.last||["Loading"]));
+}
+
 /* ---------- Reports screens ---------- */
 let rp={kind:"weekly",from:"",to:"",fresh:false,m:"",month:"",sel:null,selKey:"",tag:"All",incPh:false,roles:true};
 function reportsMenu(){
@@ -1738,7 +1890,7 @@ function reportSheet(msgText){
     if(k==="delays"||k==="variations")body+=`<label class="chk"><input type="checkbox" id="rpInc" ${rp.incPh?"checked":""}>Include photos (extra pages)</label>`;
     if(k==="manpower")body+=`<label class="chk"><input type="checkbox" id="rpRoles" ${rp.roles?"checked":""}>Include manpower by role</label>`;
   }
-  body+=`<div class="btns"><button class="btn primary" id="rpMk" type="button">Make PDF</button><button class="btn" id="rpTx" type="button">Copy as text</button><button class="btn" id="rpBack" type="button">All reports</button></div>
+  body+=`<div class="btns"><button class="btn primary" id="rpView" type="button">View report</button><button class="btn" id="rpMk" type="button">Make PDF</button><button class="btn" id="rpTx" type="button">Copy as text</button><button class="btn" id="rpBack" type="button">All reports</button></div>
     <div id="msg" class="empty">${esc(msgText||"")}</div>`;
   sheet(R.short,body,null,null,b=>{
     const q=s=>b.querySelector(s);
@@ -1754,16 +1906,9 @@ function reportSheet(msgText){
       if(q("#rpRoles"))q("#rpRoles").onchange=e=>rp.roles=e.target.checked;
       if(k==="weekly")drawPhotoPicker(q("#rpPh"))}
     const range=()=>[rp.from,rp.to||rp.from];
-    q("#rpTx").onclick=async()=>{const [a,z]=range();const txt=k==="weekly"?textWeekly(a,z,pickedPhotos()):k==="delays"?textDelays(a,z):k==="variations"?textVariations(a,z):k==="manpower"?textManpower(a,z,rp.roles):textCalendar(rp.month);
-      try{await navigator.clipboard.writeText(txt);toast("Copied")}catch(e){q("#msg").outerHTML=`<pre>${esc(txt)}</pre>`}};
-    q("#rpMk").onclick=async()=>{const mm=q("#msg"),[a,z]=range();mm.textContent="Building the PDF";
-      try{let blob,fn;
-        if(k==="weekly"){const all=rpPhotos(a,z),ph=pickedPhotos();blob=await buildWeekly(a,z,all.length?ph:null);fn=`weekly-report-${a}_to_${z}.pdf`}
-        else if(k==="delays"){blob=await buildDelays(a,z,rp.incPh);fn=`delay-register-${a}_to_${z}.pdf`}
-        else if(k==="variations"){blob=await buildVariations(a,z,rp.incPh);fn=`variations-register-${a}_to_${z}.pdf`}
-        else if(k==="manpower"){blob=await buildManpower(a,z,rp.roles);fn=`manpower-crane-${a}_to_${z}.pdf`}
-        else{blob=await buildCalendar(rp.month);fn=`pours-handovers-${rp.month}.pdf`}
-        offerPdf(mm,blob,fn)}catch(e){console.error(e);mm.textContent="Couldn't make the PDF. Try again, or use Copy as text."}};
+    q("#rpView").onclick=viewReport;
+    q("#rpTx").onclick=()=>reportCopy(q("#msg"));
+    q("#rpMk").onclick=()=>reportPdf(q("#msg"));
   });
 }
 /* weekly report: choose photos (first 8 ticked), filter the choice by tag */
